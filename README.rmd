@@ -1,0 +1,58 @@
+---
+title: "ecoinfromatics publication placeholder"
+author: Ben Branoff
+date: April 8, 2026
+output: github_document
+---
+# Coming Soon
+This is the future site of the repository for the journal article:
+Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation.
+
+
+# Abstract
+Accurate estimation of mangrove biomass is key component of the blue carbon economy and allometric equations are a cornerstone of methodological approaches from plot to landscape scales. A perennial question facing investigators is whether global allometric equations can be applied to their biome of interest, or whether local trees need to be harvested to provide accurate estimates. Further, which combinations of tree dimensions provide the most accurate estimates is not always clear. We examined 16 different allometric equations for four tree measures within a global data set for three prominent trans-Atlantic mangroves species. We used mixed effects models with site location and tree species modeled as random effects, and tree DBH, height, canopy diameter and wood density as fixed effects. While the mixed effects model with the greatest number of parameters was the best performing model based on five different statistical measures with a mean error of 1.392 kg, the improvement over simpler models was marginal. Simply measuring the DBH of each tree would only add an additional 380 grams of error per tree compared to the best performing model. These results provide qualified support for the use of global equations and can help subsequent investigators to prioritize data collection efforts.
+
+# Methods
+The below methods can be done manually, by downloading the referenced data and functions from this repository and sourcing them in R, or they can be done by installing the package in R. 
+
+```{r load-data,results='hide'}
+##  to install this repository directly, the installation function (remotes) first need to be installed
+install.packages("remotes")
+##  then install from github
+remotes::install_github("BBranoff/treellometry@ecoinf")
+library(treellometry)
+```
+
+With the library successfully loaded, the following methods will demonstrate the workflow documented in the above publication. The first steps are to create the composite variables. These are commonly used in allometric modelling because two allometric covariables are likely to be correlated, violating the assumptions of multivariate models. Creating a composite variable eliminates this issue, although it does introduce interpretation considerations.
+Here, we also set the response variable, in our case this is always aboveground biomass, and the various predictor variables. We also establish the grouping variables, these will be used to model random effects, which aims to investigate a central premise of this publication, that species and location are significant and substantial in influencing biomass predictions from allometric measurements. In short, mixed effects models will 'partition' the variance in biomass associated with individual species and locations and then attempt to model the remaining variance based on the allometric predictor variables. This is very useful in determining how much of the biomass is species or location specific, and how much depends primarily on the allometric measurements. If a significant and substantial portion of the variance in biomass can be attributed to these grouping variables, that justifies the harvest of local trees in order to determine location and species specific allometric models. On the other hand, if the mixed effects models determine that an "insubstantial" portion of the variance is due to these grouping variables, harvesting local trees is probably not warranted and the use of 'global' models that apply to all species and all locations is 'good enough'. Ultimately, that decision lies with local managers and scientists, but here we provide the statistical information necessary to make that informed decision. 
+For a more detailed outline of mixed-effects modelling in ecology, see [Harrison et al. (2018)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5970551/). 
+
+
+```{r prep-data}
+data("mangroves")
+
+###  create composite variables
+mangroves <- mangroves |>
+  mutate(Comp.DBH.H.Den = (DBH.cm^2)*Height.m*WoodDensity.g.cm3,
+         Comp.Can.H.Den = (CanopyDiameter.m^2)*Height.m*WoodDensity.g.cm3)
+
+###  set the variables of interest
+responsevar <- "AGB.kg"
+predictorvars <- c("DBH.cm","Height.m","CanopyDiameter.m","WoodDensity.g.cm3","Comp.DBH.H.Den","Comp.Can.H.Den")
+###  the random effect variables
+groupvars = c("Species", "Site")
+
+mods <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars)
+```
+
+
+## A look inside 'explore_allom_models()'
+The above use of the 'explore_allom_models()' accomplishes the bulk of the analysis for this publication, which includes fitting models of biomass from various combinations of predictor variables and fixed and mixed effects, as well as retrieving model coefficients and fitness metrics used in model evaluation. Rather than leaving all of that in the black box of the function, here we break down the internal steps of 'explore_allom_models()' to provide more insight. 
+
+```{r buildmodels, warning=FALSE,message=FALSE,eval=FALSE}
+## build the models based on the entire storm dataset.  
+## The models are built into lookup tables, 
+## with a different model for every quadrant of the storm, 
+## for every storm size and in every basin. 
+mods <- build_models(allstorms)
+```
