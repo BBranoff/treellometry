@@ -165,56 +165,51 @@ for (predss in combos) {
 print(perms)
 ```
 
-    ##       [,1]                [,2]                [,3]               
-    ##  [1,] "CanopyDiameter.m"  "DBH.cm"            "Height.m"         
-    ##  [2,] "CanopyDiameter.m"  "DBH.cm"            "WoodDensity.g.cm3"
-    ##  [3,] "CanopyDiameter.m"  "Height.m"          "DBH.cm"           
-    ##  [4,] "CanopyDiameter.m"  "Height.m"          "WoodDensity.g.cm3"
-    ##  [5,] "CanopyDiameter.m"  "WoodDensity.g.cm3" "DBH.cm"           
-    ##  [6,] "CanopyDiameter.m"  "WoodDensity.g.cm3" "Height.m"         
-    ##  [7,] "DBH.cm"            "CanopyDiameter.m"  "Height.m"         
-    ##  [8,] "DBH.cm"            "CanopyDiameter.m"  "WoodDensity.g.cm3"
-    ##  [9,] "DBH.cm"            "Height.m"          "CanopyDiameter.m" 
-    ## [10,] "DBH.cm"            "Height.m"          "WoodDensity.g.cm3"
-    ## [11,] "DBH.cm"            "WoodDensity.g.cm3" "CanopyDiameter.m" 
-    ## [12,] "DBH.cm"            "WoodDensity.g.cm3" "Height.m"         
-    ## [13,] "Height.m"          "CanopyDiameter.m"  "DBH.cm"           
-    ## [14,] "Height.m"          "CanopyDiameter.m"  "WoodDensity.g.cm3"
-    ## [15,] "Height.m"          "DBH.cm"            "CanopyDiameter.m" 
-    ## [16,] "Height.m"          "DBH.cm"            "WoodDensity.g.cm3"
-    ## [17,] "Height.m"          "WoodDensity.g.cm3" "CanopyDiameter.m" 
-    ## [18,] "Height.m"          "WoodDensity.g.cm3" "DBH.cm"           
-    ## [19,] "WoodDensity.g.cm3" "CanopyDiameter.m"  "DBH.cm"           
-    ## [20,] "WoodDensity.g.cm3" "CanopyDiameter.m"  "Height.m"         
-    ## [21,] "WoodDensity.g.cm3" "DBH.cm"            "CanopyDiameter.m" 
-    ## [22,] "WoodDensity.g.cm3" "DBH.cm"            "Height.m"         
-    ## [23,] "WoodDensity.g.cm3" "Height.m"          "CanopyDiameter.m" 
-    ## [24,] "WoodDensity.g.cm3" "Height.m"          "DBH.cm"           
-    ##       [,4]               
-    ##  [1,] "WoodDensity.g.cm3"
-    ##  [2,] "Height.m"         
-    ##  [3,] "WoodDensity.g.cm3"
-    ##  [4,] "DBH.cm"           
-    ##  [5,] "Height.m"         
-    ##  [6,] "DBH.cm"           
-    ##  [7,] "WoodDensity.g.cm3"
-    ##  [8,] "Height.m"         
-    ##  [9,] "WoodDensity.g.cm3"
-    ## [10,] "CanopyDiameter.m" 
-    ## [11,] "Height.m"         
-    ## [12,] "CanopyDiameter.m" 
-    ## [13,] "WoodDensity.g.cm3"
-    ## [14,] "DBH.cm"           
-    ## [15,] "WoodDensity.g.cm3"
-    ## [16,] "CanopyDiameter.m" 
-    ## [17,] "DBH.cm"           
-    ## [18,] "CanopyDiameter.m" 
-    ## [19,] "Height.m"         
-    ## [20,] "DBH.cm"           
-    ## [21,] "Height.m"         
-    ## [22,] "CanopyDiameter.m" 
-    ## [23,] "DBH.cm"           
-    ## [24,] "CanopyDiameter.m"
+    ##       [,1]                [,2]                [,3]                [,4]               
+    ##  [1,] "CanopyDiameter.m"  "DBH.cm"            "Height.m"          "WoodDensity.g.cm3"
+    ##  [2,] "CanopyDiameter.m"  "DBH.cm"            "WoodDensity.g.cm3" "Height.m"         
+    ##  [3,] "CanopyDiameter.m"  "Height.m"          "DBH.cm"            "WoodDensity.g.cm3"
+    ##  [4,] "CanopyDiameter.m"  "Height.m"          "WoodDensity.g.cm3" "DBH.cm"           
+    ##  [5,] "CanopyDiameter.m"  "WoodDensity.g.cm3" "DBH.cm"            "Height.m"         
+    ##  [6,] "CanopyDiameter.m"  "WoodDensity.g.cm3" "Height.m"          "DBH.cm"           
+    ##  [7,] "DBH.cm"            "CanopyDiameter.m"  "Height.m"          "WoodDensity.g.cm3"
+    ##  [8,] "DBH.cm"            "CanopyDiameter.m"  "WoodDensity.g.cm3" "Height.m"         
+    ##  [9,] "DBH.cm"            "Height.m"          "CanopyDiameter.m"  "WoodDensity.g.cm3"
+    ## [10,] "DBH.cm"            "Height.m"          "WoodDensity.g.cm3" "CanopyDiameter.m" 
+    ## [11,] "DBH.cm"            "WoodDensity.g.cm3" "CanopyDiameter.m"  "Height.m"         
+    ## [12,] "DBH.cm"            "WoodDensity.g.cm3" "Height.m"          "CanopyDiameter.m" 
+    ## [13,] "Height.m"          "CanopyDiameter.m"  "DBH.cm"            "WoodDensity.g.cm3"
+    ## [14,] "Height.m"          "CanopyDiameter.m"  "WoodDensity.g.cm3" "DBH.cm"           
+    ## [15,] "Height.m"          "DBH.cm"            "CanopyDiameter.m"  "WoodDensity.g.cm3"
+    ## [16,] "Height.m"          "DBH.cm"            "WoodDensity.g.cm3" "CanopyDiameter.m" 
+    ## [17,] "Height.m"          "WoodDensity.g.cm3" "CanopyDiameter.m"  "DBH.cm"           
+    ## [18,] "Height.m"          "WoodDensity.g.cm3" "DBH.cm"            "CanopyDiameter.m" 
+    ## [19,] "WoodDensity.g.cm3" "CanopyDiameter.m"  "DBH.cm"            "Height.m"         
+    ## [20,] "WoodDensity.g.cm3" "CanopyDiameter.m"  "Height.m"          "DBH.cm"           
+    ## [21,] "WoodDensity.g.cm3" "DBH.cm"            "CanopyDiameter.m"  "Height.m"         
+    ## [22,] "WoodDensity.g.cm3" "DBH.cm"            "Height.m"          "CanopyDiameter.m" 
+    ## [23,] "WoodDensity.g.cm3" "Height.m"          "CanopyDiameter.m"  "DBH.cm"           
+    ## [24,] "WoodDensity.g.cm3" "Height.m"          "DBH.cm"            "CanopyDiameter.m"
 
-Next, each of the permutations in ‘perms’ is used in both a fixed
-effects model as well as various mixed effects models.
+Next, each of the permutations in ‘perms’ (each row of the above table)
+is used in both a fixed effects model as well as various mixed effects
+models. The result of the below is one fixed effects model for biomass
+from the unique combination of predictor variables. This is repeated for
+each unique combination.
+
+``` r
+###  unseen in this script is that p is one row of the above printed table, basically one set of predictor variables. 
+###  The function loops through each of the rows to create different models.
+preds <- perms[p,]
+##  get the log-transformed version of the variable
+log_preds <- paste0("log", preds)
+###  remove missing values
+data_clean <- dat |> filter(across(c(log_preds,paste0("log", responseVar)), ~ !is.na(.)))
+###  create the model formulas, fixed effects first
+fixed_formula <- reformulate(log_preds, response = paste0("log", responseVar))
+###  run the model
+###  first fixed effects
+fixed_model <- lm(fixed_formula, data = data_clean)
+```
+
+Next are the much more complicated mixed effects models.
