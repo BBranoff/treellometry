@@ -48,6 +48,28 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         ###  run the model
         ###  first fixed effects
         fixed_model <- lm(fixed_formula, data = data_clean)
+        mods <- append(mods,list(fixed_model))
+        model <- ModelME <- model+1
+        names(mods)[length(mods)] <- paste0(model,".Fixed")
+        ###  get summary stats
+        fixed_summary <- summary(fixed_model)
+        AIC_fixed <- AIC(fixed_model)
+        BIC_fixed <- BIC(fixed_model)
+        RMSE_fixed <- sqrt(mean(resid(fixed_model)^2))
+        R2_fixed <- fixed_summary$r.squared
+        sig_fixed <-  sigma(fixed_model)
+        if (k>1){VIF_fixed <- car::vif(fixed_model)}else{VIF_fixed <- NA}
+        ###  predict on the model
+        predsF <- predsF |> left_join(data.frame(ID=data_clean$ID,pred=predict(fixed_model,newdata=data_clean)),by=join_by(ID))
+        ###  get the coefficient names
+        nmsf <- c(names(coef(fixed_model)),names(coef(fixed_model))[-1])
+        ###  make the coefficent names more generic
+        nmsf[2:(2*length(preds)+1)] <- c(paste0("slope.var",1:(length(preds))),paste0("VIF.var",1:(length(preds))))
+        nmsm <- nmsf
+        ###  create a data frame row to hold the coefficients
+        ###  this will be added to a growing dataframe of model coefficients
+        fixed_cols <- as_tibble_row(setNames(as.list(c(coef(fixed_model),VIF_fixed)),
+                                             paste0(nmsf, "_Fixed")))
         ###  then mixed effects
         ###  random intercept, with all grouping variables
         mixed_formula_int <- as.formula(paste0(
@@ -78,34 +100,12 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         }
         names(mixed_formula_int)[1] <- paste0("MixedInt_",paste(groupVars,collapse="&"))
         names(mixed_formula_int_slope)[1] <- paste0("MixedIntSlope_",paste(groupVars,collapse="&"))
-
-        mods <- append(mods,list(fixed_model))
-        model <- ModelME <- model+1
-        names(mods)[length(mods)] <- paste0(model,".Fixed")
-        ###  get summary stats
-        fixed_summary <- summary(fixed_model)
-        AIC_fixed <- AIC(fixed_model)
-        BIC_fixed <- BIC(fixed_model)
-        RMSE_fixed <- sqrt(mean(resid(fixed_model)^2))
-        R2_fixed <- fixed_summary$r.squared
-        sig_fixed <-  sigma(fixed_model)
-        if (k>1){VIF_fixed <- car::vif(fixed_model)}else{VIF_fixed <- NA}
-        ###  predict on the model
-        predsF <- predsF |> left_join(data.frame(ID=data_clean$ID,pred=predict(fixed_model,newdata=data_clean)),by=join_by(ID))
-        ###  get the coefficient names
-        nmsf <- c(names(coef(fixed_model)),names(coef(fixed_model))[-1])
-        ###  make the coefficent names more generic
-        nmsf[2:(2*length(preds)+1)] <- c(paste0("slope.var",1:(length(preds))),paste0("VIF.var",1:(length(preds))))
-        nmsm <- nmsf
-        ###  create a data frame row to hold the coefficients
-        ###  this will be added to a growing dataframe of model coefficients
-        fixed_cols <- as_tibble_row(setNames(as.list(c(coef(fixed_model),VIF_fixed)),
-                                             paste0(nmsf, "_Fixed")))
         ###  now the mixed effects models
         ###  create the random effects combination options
         mmmods <- c(paste0(paste(groupvars,collapse=""),c("int","intslope")),outer(groupvars,c("int","intslope"),paste0))
         ###  for each of the ME model formula templates, run the combinations
         for(mm in 1:length(mixed_formula_int)){
+          browser()
           MMods <- c(mixed_formula_int[mm],mixed_formula_int_slope[mm])
           if (mm==1){ME = paste(groupVars,collapse="&")}else{ME = groupVars[mm-1]}
           ##  Fit mixed model
@@ -146,6 +146,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
                                            c("(Intercept)", log_preds))
             }
           }
+          browser()
             result_row <- tibble(
             VarGroup = varGroup,
             Model = paste(preds, collapse = ", "),

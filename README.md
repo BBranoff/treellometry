@@ -195,7 +195,11 @@ Next, each of the permutations in ‘perms’ (each row of the above table)
 is used in both a fixed effects model as well as various mixed effects
 models. The result of the below is one fixed effects model for biomass
 from the unique combination of predictor variables. This is repeated for
-each unique combination.
+each unique combination and each model is added to a list of all the
+models, with the name reflecting the ‘family’ of the model (basically,
+which set of predictors was used) as well as the level of fixed or mixed
+effects. These names are important for identifying and evaluating model
+families in post-hoc analyses.
 
 ``` r
 ###  unseen in this script is that p is one row of the above printed table, basically one set of predictor variables. 
@@ -210,6 +214,217 @@ fixed_formula <- reformulate(log_preds, response = paste0("log", responseVar))
 ###  run the model
 ###  first fixed effects
 fixed_model <- lm(fixed_formula, data = data_clean)
+##   add the model to the list and name it appropriately
+mods <- append(mods,list(fixed_model))
+names(mods)[length(mods)] <- paste0(model,".Fixed")
+###  get summary stats
+fixed_summary <- summary(fixed_model)
+##  Akaike and Bayesian Information Criteria
+AIC_fixed <- AIC(fixed_model)
+BIC_fixed <- BIC(fixed_model)
+##  Root Mean Squared Error
+RMSE_fixed <- sqrt(mean(resid(fixed_model)^2))
+## r-squared
+R2_fixed <- fixed_summary$r.squared
+##  sigma
+sig_fixed <-  sigma(fixed_model)
+##  variance inflation factor, only valid on multiple regression models
+if (k>1){VIF_fixed <- car::vif(fixed_model)}else{VIF_fixed <- NA}
+###  predict on the model
+predsF <- predsF |> left_join(data.frame(ID=data_clean$ID,pred=predict(fixed_model,newdata=data_clean)),by=join_by(ID))
+###  get the coefficient names
+nmsf <- c(names(coef(fixed_model)),names(coef(fixed_model))[-1])
+###  make the coefficent names more generic so they can be added to a table with other model coefficients
+nmsf[2:(2*length(preds)+1)] <- c(paste0("slope.var",1:(length(preds))),paste0("VIF.var",1:(length(preds))))
+nmsm <- nmsf
+###  create a data frame row to hold the coefficients
+###  this will be added to a growing dataframe of model coefficients
+fixed_cols <- as_tibble_row(setNames(as.list(c(coef(fixed_model),VIF_fixed)),
+                                     paste0(nmsf, "_Fixed")))
 ```
 
-Next are the much more complicated mixed effects models.
+The result of the above is one row of a dataframe with some standard
+information about the model. As an example, here is the result for a
+two-variable model of biomass as a function of DBH and height:
+
+    ## # A tibble: 1 × 5
+    ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
+    ##                 <dbl>            <dbl>            <dbl>          <dbl>          <dbl>
+    ## 1                1.90            0.618             1.85           5.05           5.05
+
+Next are the more complicated mixed effects models. For every fixed
+effects model there are six mixed effects model, three for random
+intercepts only (one for each of the grouping variables and another that
+has both grouping variables) and three also for random intercepts and
+slopes. In the below code, these model structures are created but the
+models are not yet run.
+
+``` r
+###  mixed effects
+###  random intercept, with all grouping variables
+mixed_formula_int <- as.formula(paste0(
+  deparse(fixed_formula,width.cutoff = 100L),
+  " + ",
+  paste0("(1|", groupVars, ")", collapse = " + "))
+)
+###  random intercept and slope, with all grouping variables
+mixed_formula_int_slope <- as.formula(paste0(
+  deparse(fixed_formula,width.cutoff = 100L),
+  " + ",
+  paste0("(",log_preds,"|", rep(groupVars,length(preds)), ")", collapse = " + "))
+)
+###  now add in random effects on individual grouping variables
+for (m in 1:length(groupVars)){
+  mixed_formula_int <- append(mixed_formula_int,
+                              as.formula(paste0(
+                                deparse(fixed_formula,width.cutoff = 100L),
+                                " + ",
+                                "(1|", groupVars[m], ")")))
+names(mixed_formula_int)[length(mixed_formula_int)] <- paste0("MixedInt_",groupVars[m])
+mixed_formula_int_slope <- append(mixed_formula_int_slope,
+                                  as.formula(paste0(
+                                    deparse(fixed_formula,width.cutoff = 100L),
+                                    " + ",
+                                    paste0("(",log_preds,"|", rep(groupVars[m],length(preds)), ")", collapse = " + "))))
+names(mixed_formula_int_slope)[length(mixed_formula_int_slope)] <- paste0("MixedIntSlope_",groupVars[m])
+}
+names(mixed_formula_int)[1] <- paste0("MixedInt_",paste(groupVars,collapse="&"))
+names(mixed_formula_int_slope)[1] <- paste0("MixedIntSlope_",paste(groupVars,collapse="&"))
+###  create the random effects combination options
+mmmods <- c(paste0(paste(groupvars,collapse=""),c("int","intslope")),outer(groupvars,c("int","intslope"),paste0))
+```
+
+As an example of the above product, below are all of the model
+structures for the first set of models, which use DBH as a predictor.
+The firs model, the fixed effects model has already been run at this
+point, but the remaining models have not, we have only established their
+structure at this point. We will run each one individually in the next
+step, as well as collect coefficient and performance information.
+
+    ##                                                                model                         name                                               description
+    ## 1                                              logAGB.kg ~ logDBH.cm                      1.Fixed                                       fixed effects model
+    ## 2                 logAGB.kg ~ logDBH.cm + (1 | Species) + (1 | Site)      1.MixedInt_Species&Site            both species and location as random intercepts
+    ## 3 logAGB.kg ~ logDBH.cm + (logDBH.cm | Species) + (logDBH.cm | Site) 1.MixedIntSlope_Species&Site both species and location as random intercepts and slopes
+    ## 4                              logAGB.kg ~ logDBH.cm + (1 | Species)           1.MixedInt_Species                              species as random intercepts
+    ## 5                      logAGB.kg ~ logDBH.cm + (logDBH.cm | Species)      1.MixedIntSlope_Species                   species as random intercepts and slopes
+    ## 6                                 logAGB.kg ~ logDBH.cm + (1 | Site)              1.MixedInt_Site                             location as random intercepts
+    ## 7                         logAGB.kg ~ logDBH.cm + (logDBH.cm | Site)         1.MixedIntSlope_Site                  location as random intercepts and slopes
+
+In the penultimate step, we iterate through the above created mixed
+effects model structures and attempt to fit them. We use a ‘tryCatch’
+statement to avoid stopping the routine in the case of a model that, for
+whatever reason, throws an error. This is more common in mixed effects
+models due to their complex structure and requirements. If the fit is
+successful, we extract the desired information, including the same
+metrics we gathered for the fixed effects version, as well as the
+Intraclass Correlation Coefficient, which is important in evaluating
+mixed effects models [Snijders & Bosker,
+2012](https://www.stats.ox.ac.uk/~snijders/mlbook.htm). In the end, we
+add together the collected metrics and coefficients for the fixed
+effects model and all of the mixed effects model for the current
+predictor set.
+
+``` r
+###  for each of the ME model formula templates, run the combinations
+for(mm in 1:length(mixed_formula_int)){
+  MMods <- c(mixed_formula_int[mm],mixed_formula_int_slope[mm])
+  if (mm==1){ME = paste(groupVars,collapse="&")}else{ME = groupVars[mm-1]}
+  ##  Fit mixed model
+  ##  create lists to hold coefficients and model metrics
+  R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-coefs_mixed <- ICC <- VIF_mixed <- list()
+  for (M in 1:length(MMods)){
+    ###  fit the model, if possible given the data
+    mixed_model <- tryCatch({
+      lmer(MMods[M][[1]], data = data_clean, REML = FALSE)
+      }, error = function(e) NULL)
+    ###  if the model ran successfully, get the coefficients and metrics
+    if (!is.null(mixed_model)) {
+      ###  first the predictions
+      predsMM <- predsMM |> left_join(data.frame(ID=data_clean$ID,pred=predict(mixed_model,newdata=data_clean)),by=join_by(ID))
+      ##  add the model to the list and name it appropriately
+      mods <- append(mods,list(mixed_model))
+      names(mods)[length(mods)] <- paste(model,names(MMods[M]),sep=".")
+      # r-squared
+      R2_mixed <- append(R2_mixed,MuMIn::r.squaredGLMM(mixed_model)[, "R2c"])
+      # sigma
+      sigs_mixed <- append(sigs_mixed,sigma(mixed_model))
+      # Aikaike and Bayes Information Criteria
+      AIC_mixed <- append(AIC_mixed,AIC(mixed_model))
+      BIC_mixed <- append(BIC_mixed,BIC(mixed_model))
+      ## Root mean squared error
+      RMSE_mixed <- append(RMSE_mixed ,sqrt(mean(resid(mixed_model)^2)))
+      #  variance inflation factor
+      if (k>1){VIF_mixed <- car::vif(mixed_model)}else{VIF_mixed <-NA}
+      ##  add the coefficients together
+      coefs_mixed <- append(coefs_mixed,c(fixef(mixed_model,add.dropped=TRUE),VIF_mixed))
+      #  get the intraclass correlation coefficient
+      ICC <- append(ICC,icc(mixed_model)[1])
+      } else {
+      ####  if the model could not run, set its metrics and coefficients to NA
+      predsMM <- cbind(predsMM,rep(NA,nrow(predsMM)))
+      R2_mixed <- append(R2_mixed,NA)
+      sigs_mixed <- append(sigs_mixed,NA)
+      AIC_mixed <- append(AIC_mixed,NA)
+      BIC_mixed <- append(BIC_mixed,NA)
+      RMSE_mixed <- append(RMSE_mixed,NA)
+      ICC <- append(ICC,NA)
+      VIF_mixed <- append(VIF_mixed,NA)
+      coefs_mixed[[M]] <- setNames(rep(NA, length(log_preds) + 1),
+                                   c("(Intercept)", log_preds))
+      }
+  }
+  ### with both the fixed and mixed effects models fit for the same set of predictors, we add their collected information to a dataset where
+  ##  they can be more easily compared. 
+  result_row <- tibble(
+    VarGroup = varGroup,
+    Model = paste(preds, collapse = ", "),
+    NumPredictors = length(preds),
+    Rsq_Fixed = R2_fixed,
+    Sig_Fixed = sig_fixed,
+    AIC_Fixed = AIC_fixed,
+    BIC_Fixed = BIC_fixed,
+    RMSE_Fixed = RMSE_fixed,
+    ) |> mutate(MixedEffects=ME) |>
+    bind_cols(as_tibble_row(setNames(as.list(c(R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,ICC)),
+                                     paste0(rep(c("Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","ICC_Mixed"),each=2),
+                                            c("Int","IntSlope")))))
+  coef_row <- tibble(
+    VarGroup = varGroup,
+    MixedEffects=ME,
+    Model = paste(preds, collapse = ", "),
+    NumPredictors = length(preds)) |>
+    bind_cols(fixed_cols)|>
+    bind_cols(as_tibble_row(setNames(as.list(coefs_mixed),
+                                     paste0(nmsm, "_Mixed",rep(c("Int","IntSlope"),each=length(nmsm))))))
+  results[[length(results) + 1]] <- result_row
+  coefs[[length(coefs) + 1]] <- coef_row
+}
+```
+
+The result of the above is a dataframe containing relevant metrics and
+model coefficents for all of the models within a given ‘family’, that is
+all of the models that use the same set of predictors but with different
+combinations of mixed effects. This is done for all of the families, and
+the results are combined together into a master data frame containing
+all of the information from all of the models.
+
+    ## Warning: Can't compute random effect variances. Some variance components equal zero. Your model may suffer from singularity (see `?lme4::isSingular` and `?performance::check_singularity`).
+    ##   Decrease the `tolerance` level to force the calculation of random effect variances, or impose priors on your random effects parameters (using packages like `brms` or `glmmTMB`).
+    ## Warning: Can't compute random effect variances. Some variance components equal zero. Your model may suffer from singularity (see `?lme4::isSingular` and `?performance::check_singularity`).
+    ##   Decrease the `tolerance` level to force the calculation of random effect variances, or impose priors on your random effects parameters (using packages like `brms` or `glmmTMB`).
+    ## Warning: Can't compute random effect variances. Some variance components equal zero. Your model may suffer from singularity (see `?lme4::isSingular` and `?performance::check_singularity`).
+    ##   Decrease the `tolerance` level to force the calculation of random effect variances, or impose priors on your random effects parameters (using packages like `brms` or `glmmTMB`).
+
+    ## # A tibble: 3 × 21
+    ##   VarGroup Model            NumPredictors Rsq_Fixed Sig_Fixed AIC_Fixed BIC_Fixed RMSE_Fixed MixedEffects Rsq_MixedInt Rsq_MixedIntSlope Sig_MixedInt Sig_MixedIntSlope AIC_MixedInt AIC_MixedIntSlope BIC_MixedInt BIC_MixedIntSlope RMSE_MixedInt RMSE_MixedIntSlope ICC_MixedInt ICC_MixedIntSlope
+    ##      <dbl> <chr>                    <dbl>     <dbl>     <dbl>     <dbl>     <dbl>      <dbl> <chr>               <dbl>             <dbl>        <dbl>             <dbl>        <dbl>             <dbl>        <dbl>             <dbl>         <dbl>              <dbl>        <dbl> <lgl>            
+    ## 1        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Species&Site        0.966             0.979        0.401             0.322         442.              319.         466.              383.         0.396              0.316        0.229 NA               
+    ## 2        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Species             0.966             0.979        0.401             0.322         442.              319.         466.              383.         0.396              0.316        0.229 NA               
+    ## 3        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Site                0.966             0.979        0.401             0.322         442.              319.         466.              383.         0.396              0.316        0.229 NA
+
+    ## # A tibble: 3 × 19
+    ##   VarGroup MixedEffects Model            NumPredictors `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed `(Intercept)_MixedInt` slope.var1_MixedInt slope.var2_MixedInt VIF.var1_MixedInt VIF.var2_MixedInt `(Intercept)_MixedIntSlope` slope.var1_MixedIntSlope slope.var2_MixedIntSlope VIF.var1_MixedIntSlope VIF.var2_MixedIntSlope
+    ##      <dbl> <chr>        <chr>                    <dbl>               <dbl>            <dbl>            <dbl>          <dbl>          <dbl>                  <dbl>               <dbl>               <dbl>             <dbl>             <dbl>                       <dbl>                    <dbl>                    <dbl>                  <dbl>                  <dbl>
+    ## 1        6 Species&Site Height.m, DBH.cm             2                1.90            0.618             1.85           5.05           5.05                   1.87               0.656                1.83              6.04              6.04                        1.92                    0.504                     1.95                   1.17                   1.17
+    ## 2        6 Species&Site Height.m, DBH.cm             2                1.90            0.618             1.85           5.05           5.05                   1.87               0.656                1.83              6.04              6.04                        1.92                    0.504                     1.95                   1.17                   1.17
+    ## 3        6 Species&Site Height.m, DBH.cm             2                1.90            0.618             1.85           5.05           5.05                   1.87               0.656                1.83              6.04              6.04                        1.92                    0.504                     1.95                   1.17                   1.17
