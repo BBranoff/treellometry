@@ -45,6 +45,9 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         data_clean <- dat |> filter(across(c(log_preds,paste0("log", responseVar)), ~ !is.na(.)))
         ###  create the model formulas, fixed effects first
         fixed_formula <- reformulate(log_preds, response = paste0("log", responseVar))
+        ###  run the model
+        ###  first fixed effects
+        fixed_model <- lm(fixed_formula, data = data_clean)
         ###  then mixed effects
         ###  random intercept, with all grouping variables
         mixed_formula_int <- as.formula(paste0(
@@ -75,9 +78,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         }
         names(mixed_formula_int)[1] <- paste0("MixedInt_",paste(groupVars,collapse="&"))
         names(mixed_formula_int_slope)[1] <- paste0("MixedIntSlope_",paste(groupVars,collapse="&"))
-        ###  run the models
-        ###  first fixed effects
-        fixed_model <- lm(fixed_formula, data = data_clean)
+
         mods <- append(mods,list(fixed_model))
         model <- ModelME <- model+1
         names(mods)[length(mods)] <- paste0(model,".Fixed")
