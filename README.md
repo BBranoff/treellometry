@@ -77,6 +77,23 @@ informed decision. For a more detailed outline of mixed-effects
 modelling in ecology, see [Harrison et
 al. (2018)](https://doi.org/10.7717/peerj.4794).
 
+``` r
+data("mangroves")
+
+###  create composite variables
+mangroves <- mangroves |>
+  mutate(Comp.DBH.H.Den = (DBH.cm^2)*Height.m*WoodDensity.g.cm3,
+         Comp.Can.H.Den = (CanopyDiameter.m^2)*Height.m*WoodDensity.g.cm3)
+
+###  set the variables of interest
+responsevar <- "AGB.kg"
+predictorvars <- c("DBH.cm","Height.m","CanopyDiameter.m","WoodDensity.g.cm3","Comp.DBH.H.Den","Comp.Can.H.Den")
+###  the random effect variables
+groupvars = c("Species", "Site")
+
+mods <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars)
+```
+
 ## A look inside ‘explore_allom_models()’
 
 The above use of the ‘explore_allom_models()’ accomplishes the bulk of
@@ -319,10 +336,13 @@ successful, we extract the desired information, including the same
 metrics we gathered for the fixed effects version, as well as the
 Intraclass Correlation Coefficient, which is important in evaluating
 mixed effects models [Snijders & Bosker,
-2012](https://www.stats.ox.ac.uk/~snijders/mlbook.htm). In the end, we
-add together the collected metrics and coefficients for the fixed
-effects model and all of the mixed effects model for the current
-predictor set.
+2012](https://www.stats.ox.ac.uk/~snijders/mlbook.htm). Most of the
+other metrics are equivalent to the fixed effects metrics, however the
+r-squared returned here is the ‘conditional r-squared’. This is the
+r-squared value considering both fixed and mixed effects. See
+MuMIn::r.squaredGLMM for more information. In the end, we add together
+the collected metrics and coefficients for the fixed effects model and
+all of the mixed effects model for the current predictor set.
 
 ``` r
 ###  for each of the ME model formula templates, run the combinations
@@ -344,7 +364,7 @@ for(mm in 1:length(mixed_formula_int)){
       ##  add the model to the list and name it appropriately
       mods <- append(mods,list(mixed_model))
       names(mods)[length(mods)] <- paste(model,names(MMods[M]),sep=".")
-      # r-squared
+      # r-squared, in this case we are using the 'conditional r-squared', which includes both fixed and random effects 
       R2_mixed <- append(R2_mixed,MuMIn::r.squaredGLMM(mixed_model)[, "R2c"])
       # sigma
       sigs_mixed <- append(sigs_mixed,sigma(mixed_model))
@@ -407,13 +427,6 @@ all of the models that use the same set of predictors but with different
 combinations of mixed effects. This is done for all of the families, and
 the results are combined together into a master data frame containing
 all of the information from all of the models.
-
-    ## Warning: Can't compute random effect variances. Some variance components equal zero. Your model may suffer from singularity (see `?lme4::isSingular` and `?performance::check_singularity`).
-    ##   Decrease the `tolerance` level to force the calculation of random effect variances, or impose priors on your random effects parameters (using packages like `brms` or `glmmTMB`).
-    ## Warning: Can't compute random effect variances. Some variance components equal zero. Your model may suffer from singularity (see `?lme4::isSingular` and `?performance::check_singularity`).
-    ##   Decrease the `tolerance` level to force the calculation of random effect variances, or impose priors on your random effects parameters (using packages like `brms` or `glmmTMB`).
-    ## Warning: Can't compute random effect variances. Some variance components equal zero. Your model may suffer from singularity (see `?lme4::isSingular` and `?performance::check_singularity`).
-    ##   Decrease the `tolerance` level to force the calculation of random effect variances, or impose priors on your random effects parameters (using packages like `brms` or `glmmTMB`).
 
     ## # A tibble: 3 × 21
     ##   VarGroup Model            NumPredictors Rsq_Fixed Sig_Fixed AIC_Fixed BIC_Fixed RMSE_Fixed MixedEffects Rsq_MixedInt Rsq_MixedIntSlope Sig_MixedInt Sig_MixedIntSlope AIC_MixedInt AIC_MixedIntSlope BIC_MixedInt BIC_MixedIntSlope RMSE_MixedInt RMSE_MixedIntSlope ICC_MixedInt ICC_MixedIntSlope
