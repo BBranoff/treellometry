@@ -53,9 +53,14 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         names(mods)[length(mods)] <- paste0(model,".Fixed")
         ###  get summary stats
         fixed_summary <- summary(fixed_model)
+        cv <- cv::cv(fixed_model, data_clean, k=10, details=TRUE)
+        #cv <- performance::performance_cv(eval(substitute(lm(fixed_model,data=data_clean))),method="k_fold",k=10)
         AIC_fixed <- AIC(fixed_model)
         BIC_fixed <- BIC(fixed_model)
         RMSE_fixed <- sqrt(mean(resid(fixed_model)^2))
+        RMSE_fixed_std <-  RMSE_fixed/mean(data_clean[,paste0("log", responseVar)],na.rm=TRUE)
+        RMSE_CVmean_fixed <-  mean(sqrt(cv$details$criterion),na.rm=TRUE)
+        RMSE_CVsd_fixed <-  sd(sqrt(cv$details$criterion),na.rm=TRUE)
         R2_fixed <- fixed_summary$r.squared
         sig_fixed <-  sigma(fixed_model)
         if (k>1){VIF_fixed <- car::vif(fixed_model)}else{VIF_fixed <- NA}
@@ -105,12 +110,11 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         mmmods <- c(paste0(paste(groupvars,collapse=""),c("int","intslope")),outer(groupvars,c("int","intslope"),paste0))
         ###  for each of the ME model formula templates, run the combinations
         for(mm in 1:length(mixed_formula_int)){
-          browser()
           MMods <- c(mixed_formula_int[mm],mixed_formula_int_slope[mm])
           if (mm==1){ME = paste(groupVars,collapse="&")}else{ME = groupVars[mm-1]}
           ##  Fit mixed model
           ##  create lists to hold coefficients and model metrics
-          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-coefs_mixed <- ICC <- VIF_mixed <- list()
+          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_mixed_std<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC <- VIF_mixed <- list()
           for (M in 1:length(MMods)){
             ###  fit the model, if possible given the data
             #ModelME <- ModelME+0.1
@@ -121,6 +125,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             if (!is.null(mixed_model)) {
               ###  first the predictions
               predsMM <- predsMM |> left_join(data.frame(ID=data_clean$ID,pred=predict(mixed_model,newdata=data_clean)),by=join_by(ID))
+              ####  caret offers more control but is not optimal for me models
+              cv <- cv::cv(mixed_model, data_clean, k=10, details=TRUE)
               mods <- append(mods,list(mixed_model))
               names(mods)[length(mods)] <- paste(model,names(MMods[M]),sep=".")
               R2_mixed <- append(R2_mixed,MuMIn::r.squaredGLMM(mixed_model)[, "R2c"])
@@ -128,6 +134,9 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               AIC_mixed <- append(AIC_mixed,AIC(mixed_model))
               BIC_mixed <- append(BIC_mixed,BIC(mixed_model))
               RMSE_mixed <- append(RMSE_mixed ,sqrt(mean(resid(mixed_model)^2)))
+              RMSE_mixed_std = append(RMSE_mixed_std,sqrt(mean(resid(mixed_model)^2))/mean(data_clean[, paste0("log", responseVar)],na.rm=TRUE))
+              RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed , mean(sqrt(cv$details$criterion),na.rm=TRUE))
+              RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed , sd(sqrt(cv$details$criterion),na.rm=TRUE))
               if (k>1){VIF_mixed <- car::vif(mixed_model)}else{VIF_mixed <-NA}
               coefs_mixed <- append(coefs_mixed,c(fixef(mixed_model,add.dropped=TRUE),VIF_mixed))
               #if (is.na(icc(mixed_model)[1])){browser()}
@@ -140,13 +149,15 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               AIC_mixed <- append(AIC_mixed,NA)
               BIC_mixed <- append(BIC_mixed,NA)
               RMSE_mixed <- append(RMSE_mixed,NA)
+              RMSE_mixed_std <- append(RMSE_mixed_std,NA)
+              RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed,NA)
+              RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed,NA)
               ICC <- append(ICC,NA)
               VIF_mixed <- append(VIF_mixed,NA)
               coefs_mixed[[M]] <- setNames(rep(NA, length(log_preds) + 1),
                                            c("(Intercept)", log_preds))
             }
           }
-          browser()
             result_row <- tibble(
             VarGroup = varGroup,
             Model = paste(preds, collapse = ", "),
@@ -156,9 +167,12 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             AIC_Fixed = AIC_fixed,
             BIC_Fixed = BIC_fixed,
             RMSE_Fixed = RMSE_fixed,
+            RMSE.Std_Fixed = RMSE_fixed_std,
+            RMSE.CVmean_Fixed = RMSE_CVmean_fixed,
+            RMSE.CVsd_Fixed = RMSE_CVsd_fixed,
           ) |> mutate(MixedEffects=ME) |>
-            bind_cols(as_tibble_row(setNames(as.list(c(R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,ICC)),
-                                             paste0(rep(c("Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","ICC_Mixed"),each=2),
+            bind_cols(as_tibble_row(setNames(as.list(c(R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_mixed_std,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC)),
+                                             paste0(rep(c("Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.Std_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed"),each=2),
                                                     c("Int","IntSlope")))))
           coef_row <- tibble(
             VarGroup = varGroup,
