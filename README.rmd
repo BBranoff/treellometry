@@ -456,72 +456,72 @@ checks <- lapply(unique(results_rank_filtered$ModelName),function(x){
 ```
 
 
-```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE}
-predsMM <-mods$predsMM
-predsF <-mods$predsF
-####  variation in models at each site?
-gg_preds1 <- predsMM %>%
-  #select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>%
-  left_join(predsF |>select(ID,contains("preds_")),by=join_by(ID))%>%
-  tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>%
-  tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>%
-  mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars),
-         RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")),
-         RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>%
-  filter(!grepl("Site",RandomVars))%>%
-  ggplot(aes(x=logDBH.cm,y=logAGB.kg,col=Species))+
-  geom_point(alpha=1)+
-  geom_line(aes(y=value,lty=RandomEffects))+
-  #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+
-  facet_grid(Species~Site)+
-  #scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+
-  scale_linetype_manual(values=c(1,2,4))+
-  theme_bw()
-gg_preds2 <- predsMM %>%
-  #select(Dataset:logWoodDensity,contains("mod1_")) %>%
-  cbind(predsF %>% select(contains("preds_")))%>%#rename(mod1_none_none = mod1_)) %>%
-  tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>%
-  tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>%
-  mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars),
-         RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")),
-         RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>%
-  ggplot(aes(x=logDBH.cm,y=logAGB.kg,shape=Species))+
-  #geom_point(col="darkgrey")+
-  #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+
-  facet_wrap(~Species)+
-  scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+
-  scale_linetype_manual(values=c(1,2,4))+
-  geom_line(aes(y=value,lty=RandomEffects,col=RandomVars))+
-  theme_bw()
+<!-- ```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE} -->
+<!-- predsMM <-mods$predsMM -->
+<!-- predsF <-mods$predsF -->
+<!-- ####  variation in models at each site? -->
+<!-- gg_preds1 <- predsMM %>% -->
+<!--   #select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
+<!--   left_join(predsF |>select(ID,contains("preds_")),by=join_by(ID))%>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>% -->
+<!--   filter(!grepl("Site",RandomVars))%>% -->
+<!--   ggplot(aes(x=logDBH.cm,y=logAGB.kg,col=Species))+ -->
+<!--   geom_point(alpha=1)+ -->
+<!--   geom_line(aes(y=value,lty=RandomEffects))+ -->
+<!--   #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+ -->
+<!--   facet_grid(Species~Site)+ -->
+<!--   #scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+ -->
+<!--   scale_linetype_manual(values=c(1,2,4))+ -->
+<!--   theme_bw() -->
+<!-- gg_preds2 <- predsMM %>% -->
+<!--   #select(Dataset:logWoodDensity,contains("mod1_")) %>% -->
+<!--   cbind(predsF %>% select(contains("preds_")))%>%#rename(mod1_none_none = mod1_)) %>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>% -->
+<!--   ggplot(aes(x=logDBH.cm,y=logAGB.kg,shape=Species))+ -->
+<!--   #geom_point(col="darkgrey")+ -->
+<!--   #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+ -->
+<!--   facet_wrap(~Species)+ -->
+<!--   scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+ -->
+<!--   scale_linetype_manual(values=c(1,2,4))+ -->
+<!--   geom_line(aes(y=value,lty=RandomEffects,col=RandomVars))+ -->
+<!--   theme_bw() -->
 
-#####   Residual density plot
-predsMM %>%
-  select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>%
-  cbind(predsF %>% select(contains("preds_")))%>%
-  tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>%
-  tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>%
-  mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars),
-         RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")),
-         RandomEffects = gsub("^.*?\\.","",RandomEffects),
-         Residuals = logAGB.kg-value) %>%
-  ggplot(aes(x=Residuals,col=RandomVars))+
-  geom_density()+
-  facet_wrap(~RandomEffects)+
-  theme_bw()
+<!-- #####   Residual density plot -->
+<!-- predsMM %>% -->
+<!--   select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
+<!--   cbind(predsF %>% select(contains("preds_")))%>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects), -->
+<!--          Residuals = logAGB.kg-value) %>% -->
+<!--   ggplot(aes(x=Residuals,col=RandomVars))+ -->
+<!--   geom_density()+ -->
+<!--   facet_wrap(~RandomEffects)+ -->
+<!--   theme_bw() -->
 
-###  Residuals versus observations
-predsMM %>%
-  select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>%
-  cbind(predsF %>% select(contains("preds_")))%>%
-  tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>%
-  tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>%
-  mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars),
-         RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")),
-         RandomEffects = gsub("^.*?\\.","",RandomEffects),
-         Residuals = logAGB.kg-value) %>%
-  ggplot(aes(x=value,y=Residuals,col=RandomEffects))+
-  geom_point()+
-  facet_wrap(~RandomVars)+
-  theme_bw()
-```
+<!-- ###  Residuals versus observations -->
+<!-- predsMM %>% -->
+<!--   select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
+<!--   cbind(predsF %>% select(contains("preds_")))%>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects), -->
+<!--          Residuals = logAGB.kg-value) %>% -->
+<!--   ggplot(aes(x=value,y=Residuals,col=RandomEffects))+ -->
+<!--   geom_point()+ -->
+<!--   facet_wrap(~RandomVars)+ -->
+<!--   theme_bw() -->
+<!-- ``` -->
 

@@ -1,0 +1,113 @@
+"ModelN","VarGroup","Effects","MixedEffects","Model","NumPredictors","ModelName","(Intercept)","slope.var1","slope.var2","slope.var3","slope.var4","VIF.var1","VIF.var2","VIF.var3","VIF.var4","maxVIF"
+12,12,"MixedInt","Species&Site","DBH.cm, Height.m, CanopyDiameter.m",3,"12.MixedInt_Species&Site",1.29821,1.25285,0.94713,0.85038,NA,9.29039,5.47292,3.62643,NA,9.29039
+16,16,"Fixed",NA,"DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.Fixed",1.30703,1.22461,0.91141,0.87615,0.1004,11.55534,5.10315,5.38479,1.08854,11.55534
+12,12,"Fixed",NA,"DBH.cm, Height.m, CanopyDiameter.m",3,"12.Fixed",1.23785,1.15118,0.93126,0.98626,NA,11.09412,5.09042,4.95239,NA,11.09412
+4,4,"MixedIntSlope","Site","Comp.DBH.H.Den",1,"4.MixedIntSlope_Site",2.41852,2.12658,NA,NA,NA,NA,NA,NA,NA,-Inf
+14,14,"MixedInt","Species&Site","DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.MixedInt_Species&Site",1.79122,1.87636,0.71186,0.10922,NA,3.33453,3.35937,1.04595,NA,3.35937
+14,14,"MixedInt","Site","DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.MixedInt_Site",1.79002,1.8756,0.71318,0.11048,NA,3.32768,3.37549,1.09138,NA,3.37549
+7,7,"MixedInt","Species&Site","DBH.cm, CanopyDiameter.m",2,"7.MixedInt_Species&Site",1.79061,1.87242,0.72017,NA,NA,3.31996,3.31996,NA,NA,3.31996
+7,7,"MixedInt","Site","DBH.cm, CanopyDiameter.m",2,"7.MixedInt_Site",1.72702,1.80389,0.83694,NA,NA,3.10964,3.10964,NA,NA,3.10964
+6,6,"MixedInt","Species&Site","DBH.cm, Height.m",2,"6.MixedInt_Species&Site",1.87328,1.82878,0.65638,NA,NA,6.03746,6.03746,NA,NA,6.03746
+4,4,"MixedInt","Species&Site","Comp.DBH.H.Den",1,"4.MixedInt_Species&Site",2.45064,2.10014,NA,NA,NA,NA,NA,NA,NA,-Inf
+14,14,"Fixed",NA,"DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.Fixed",1.86142,1.86625,0.62214,0.1119,NA,4.85936,4.94725,1.08582,NA,4.94725
+6,6,"MixedInt","Species","DBH.cm, Height.m",2,"6.MixedInt_Species",1.91939,1.87559,0.59129,NA,NA,5.482,5.482,NA,NA,5.482
+13,13,"Fixed",NA,"DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.Fixed",1.90817,1.86138,0.61108,0.16761,NA,5.05013,5.04648,1.00207,NA,5.05013
+4,4,"MixedInt","Site","Comp.DBH.H.Den",1,"4.MixedInt_Site",2.46179,2.09587,NA,NA,NA,NA,NA,NA,NA,-Inf
+7,7,"Fixed",NA,"DBH.cm, CanopyDiameter.m",2,"7.Fixed",1.79763,1.79982,0.73899,NA,NA,4.55624,4.55624,NA,NA,4.55624
+1,1,"MixedIntSlope","Species&Site","DBH.cm",1,"1.MixedIntSlope_Species&Site",2.20182,2.18547,NA,NA,NA,NA,NA,NA,NA,-Inf
+4,4,"Fixed",NA,"Comp.DBH.H.Den",1,"4.Fixed",2.46776,2.11085,NA,NA,NA,NA,NA,NA,NA,-Inf
+6,6,"Fixed",NA,"DBH.cm, Height.m",2,"6.Fixed",1.90491,1.84942,0.61778,NA,NA,5.04598,5.04598,NA,NA,5.04598
+1,1,"MixedIntSlope","Site","DBH.cm",1,"1.MixedIntSlope_Site",2.19063,2.15239,NA,NA,NA,NA,NA,NA,NA,-Inf
+1,1,"MixedIntSlope","Species","DBH.cm",1,"1.MixedIntSlope_Species",2.24349,2.16918,NA,NA,NA,NA,NA,NA,NA,-Inf
+1,1,"MixedInt","Species&Site","DBH.cm",1,"1.MixedInt_Species&Site",2.21901,2.10978,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"MixedIntSlope","Site","Comp.Can.H.Den",1,"5.MixedIntSlope_Site",0.26749,3.31477,NA,NA,NA,NA,NA,NA,NA,-Inf
+8,8,"Fixed",NA,"DBH.cm, WoodDensity.g.cm3",2,"8.Fixed",2.23619,2.11343,0.21502,NA,NA,1.00035,1.00035,NA,NA,1.00035
+1,1,"MixedInt","Species","DBH.cm",1,"1.MixedInt_Species",2.24195,2.11293,NA,NA,NA,NA,NA,NA,NA,-Inf
+9,9,"MixedInt","Species&Site","Height.m, CanopyDiameter.m",2,"9.MixedInt_Species&Site",0.81349,1.68284,1.39577,NA,NA,3.5983,3.5983,NA,NA,3.5983
+15,15,"MixedInt","Site","Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.MixedInt_Site",0.80578,1.68508,1.3935,0.02318,NA,3.72773,3.72678,1.06903,NA,3.72773
+9,9,"MixedInt","Site","Height.m, CanopyDiameter.m",2,"9.MixedInt_Site",0.80471,1.67016,1.40914,NA,NA,3.50562,3.50562,NA,NA,3.50562
+15,15,"MixedInt","Species&Site","Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.MixedInt_Species&Site",0.81147,1.68736,1.39102,0.02126,NA,3.69657,3.69752,1.03518,NA,3.69752
+1,1,"Fixed",NA,"DBH.cm",1,"1.Fixed",2.22282,2.10932,NA,NA,NA,NA,NA,NA,NA,-Inf
+9,9,"Fixed",NA,"Height.m, CanopyDiameter.m",2,"9.Fixed",0.69877,1.52884,1.67022,NA,NA,4.99639,4.99639,NA,NA,4.99639
+15,15,"Fixed",NA,"Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.Fixed",0.69889,1.53858,1.66116,0.01768,NA,5.32366,5.27264,1.0657,NA,5.32366
+2,2,"MixedIntSlope","Species&Site","Height.m",1,"2.MixedIntSlope_Species&Site",0.76098,3.2371,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"MixedInt","Species&Site","Comp.Can.H.Den",1,"5.MixedInt_Species&Site",0.65836,3.02175,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"Fixed",NA,"Comp.Can.H.Den",1,"5.Fixed",0.60274,3.12164,NA,NA,NA,NA,NA,NA,NA,-Inf
+2,2,"MixedIntSlope","Site","Height.m",1,"2.MixedIntSlope_Site",0.80915,3.20039,NA,NA,NA,NA,NA,NA,NA,-Inf
+3,3,"MixedIntSlope","Site","CanopyDiameter.m",1,"3.MixedIntSlope_Site",0.30875,3.09011,NA,NA,NA,NA,NA,NA,NA,-Inf
+2,2,"MixedInt","Species&Site","Height.m",1,"2.MixedInt_Species&Site",0.84205,2.84546,NA,NA,NA,NA,NA,NA,NA,-Inf
+10,10,"MixedInt","Species&Site","Height.m, WoodDensity.g.cm3",2,"10.MixedInt_Species&Site",0.83509,2.84387,0.14002,NA,NA,1.00414,1.00414,NA,NA,1.00414
+10,10,"MixedInt","Site","Height.m, WoodDensity.g.cm3",2,"10.MixedInt_Site",0.835,2.84365,0.14043,NA,NA,1.00473,1.00473,NA,NA,1.00473
+2,2,"MixedInt","Site","Height.m",1,"2.MixedInt_Site",0.86076,2.83039,NA,NA,NA,NA,NA,NA,NA,-Inf
+11,11,"MixedInt","Site","CanopyDiameter.m, WoodDensity.g.cm3",2,"11.MixedInt_Site",0.64144,2.8825,-0.13487,NA,NA,1.00503,1.00503,NA,NA,1.00503
+3,3,"MixedInt","Species&Site","CanopyDiameter.m",1,"3.MixedInt_Species&Site",0.64436,2.88366,NA,NA,NA,NA,NA,NA,NA,-Inf
+3,3,"MixedInt","Site","CanopyDiameter.m",1,"3.MixedInt_Site",0.63862,2.86732,NA,NA,NA,NA,NA,NA,NA,-Inf
+11,11,"Fixed",NA,"CanopyDiameter.m, WoodDensity.g.cm3",2,"11.Fixed",0.60692,3.05754,-0.1541,NA,NA,1.00018,1.00018,NA,NA,1.00018
+3,3,"Fixed",NA,"CanopyDiameter.m",1,"3.Fixed",0.60261,3.05544,NA,NA,NA,NA,NA,NA,NA,-Inf
+10,10,"Fixed",NA,"Height.m, WoodDensity.g.cm3",2,"10.Fixed",0.76351,3.01052,0.15674,NA,NA,1.00775,1.00775,NA,NA,1.00775
+2,2,"Fixed",NA,"Height.m",1,"2.Fixed",0.77082,2.99651,NA,NA,NA,NA,NA,NA,NA,-Inf
+1,1,"MixedInt","Site","DBH.cm",1,"1.MixedInt_Site",2.21888,2.09695,NA,NA,NA,NA,NA,NA,NA,-Inf
+2,2,"MixedInt","Species","Height.m",1,"2.MixedInt_Species",0.77318,3.03502,NA,NA,NA,NA,NA,NA,NA,-Inf
+2,2,"MixedIntSlope","Species","Height.m",1,"2.MixedIntSlope_Species",0.77839,3.03192,NA,NA,NA,NA,NA,NA,NA,-Inf
+3,3,"MixedIntSlope","Species&Site","CanopyDiameter.m",1,"3.MixedIntSlope_Species&Site",0.30232,3.10956,NA,NA,NA,NA,NA,NA,NA,-Inf
+3,3,"MixedInt","Species","CanopyDiameter.m",1,"3.MixedInt_Species",0.60507,3.05477,NA,NA,NA,NA,NA,NA,NA,-Inf
+3,3,"MixedIntSlope","Species","CanopyDiameter.m",1,"3.MixedIntSlope_Species",0.6051,3.04579,NA,NA,NA,NA,NA,NA,NA,-Inf
+4,4,"MixedIntSlope","Species&Site","Comp.DBH.H.Den",1,"4.MixedIntSlope_Species&Site",2.40036,2.14044,NA,NA,NA,NA,NA,NA,NA,-Inf
+4,4,"MixedInt","Species","Comp.DBH.H.Den",1,"4.MixedInt_Species",2.47252,2.11283,NA,NA,NA,NA,NA,NA,NA,-Inf
+4,4,"MixedIntSlope","Species","Comp.DBH.H.Den",1,"4.MixedIntSlope_Species",2.47362,2.10964,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"MixedIntSlope","Species&Site","Comp.Can.H.Den",1,"5.MixedIntSlope_Species&Site",0.25056,3.33865,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"MixedInt","Species","Comp.Can.H.Den",1,"5.MixedInt_Species",0.6029,3.12046,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"MixedIntSlope","Species","Comp.Can.H.Den",1,"5.MixedIntSlope_Species",0.60431,3.11617,NA,NA,NA,NA,NA,NA,NA,-Inf
+5,5,"MixedInt","Site","Comp.Can.H.Den",1,"5.MixedInt_Site",0.64828,3.02082,NA,NA,NA,NA,NA,NA,NA,-Inf
+6,6,"MixedIntSlope","Species&Site","DBH.cm, Height.m",2,"6.MixedIntSlope_Species&Site",1.88841,1.94416,0.48464,NA,NA,1.29308,1.29308,NA,NA,1.29308
+6,6,"MixedIntSlope","Species","DBH.cm, Height.m",2,"6.MixedIntSlope_Species",1.94244,1.89091,0.55315,NA,NA,1.94267,1.94267,NA,NA,1.94267
+6,6,"MixedInt","Site","DBH.cm, Height.m",2,"6.MixedInt_Site",1.87009,1.79398,0.69226,NA,NA,5.822,5.822,NA,NA,5.822
+6,6,"MixedIntSlope","Site","DBH.cm, Height.m",2,"6.MixedIntSlope_Site",1.99215,1.95398,0.44965,NA,NA,1.08105,1.08105,NA,NA,1.08105
+7,7,"MixedIntSlope","Species&Site","DBH.cm, CanopyDiameter.m",2,"7.MixedIntSlope_Species&Site",1.91852,1.90718,0.59253,NA,NA,1.11696,1.11696,NA,NA,1.11696
+7,7,"MixedInt","Species","DBH.cm, CanopyDiameter.m",2,"7.MixedInt_Species",1.84204,1.86225,0.65081,NA,NA,4.7005,4.7005,NA,NA,4.7005
+7,7,"MixedIntSlope","Species","DBH.cm, CanopyDiameter.m",2,"7.MixedIntSlope_Species",1.84002,1.85318,0.68575,NA,NA,1.32447,1.32447,NA,NA,1.32447
+7,7,"MixedIntSlope","Site","DBH.cm, CanopyDiameter.m",2,"7.MixedIntSlope_Site",1.78822,1.87426,0.69856,NA,NA,1.0611,1.0611,NA,NA,1.0611
+8,8,"MixedInt","Species&Site","DBH.cm, WoodDensity.g.cm3",2,"8.MixedInt_Species&Site",2.21256,2.10999,0.21887,NA,NA,1.00291,1.00291,NA,NA,1.00291
+8,8,"MixedIntSlope","Species&Site","DBH.cm, WoodDensity.g.cm3",2,"8.MixedIntSlope_Species&Site",2.24052,2.15418,0.22026,NA,NA,1.00003,1.00003,NA,NA,1.00003
+8,8,"MixedInt","Species","DBH.cm, WoodDensity.g.cm3",2,"8.MixedInt_Species",2.23619,2.11343,0.21502,NA,NA,1.00035,1.00035,NA,NA,1.00035
+8,8,"MixedIntSlope","Species","DBH.cm, WoodDensity.g.cm3",2,"8.MixedIntSlope_Species",2.23766,2.17021,0.21883,NA,NA,1.00002,1.00002,NA,NA,1.00002
+8,8,"MixedInt","Site","DBH.cm, WoodDensity.g.cm3",2,"8.MixedInt_Site",2.21256,2.10999,0.21887,NA,NA,1.00291,1.00291,NA,NA,1.00291
+8,8,"MixedIntSlope","Site","DBH.cm, WoodDensity.g.cm3",2,"8.MixedIntSlope_Site",2.2142,2.17877,0.2191,NA,NA,1.00098,1.00098,NA,NA,1.00098
+9,9,"MixedIntSlope","Species&Site","Height.m, CanopyDiameter.m",2,"9.MixedIntSlope_Species&Site",0.49461,1.82195,1.6132,NA,NA,1.04233,1.04233,NA,NA,1.04233
+9,9,"MixedInt","Species","Height.m, CanopyDiameter.m",2,"9.MixedInt_Species",0.69877,1.52884,1.67022,NA,NA,4.99639,4.99639,NA,NA,4.99639
+9,9,"MixedIntSlope","Species","Height.m, CanopyDiameter.m",2,"9.MixedIntSlope_Species",0.66787,1.5806,1.59971,NA,NA,1.01286,1.01286,NA,NA,1.01286
+9,9,"MixedIntSlope","Site","Height.m, CanopyDiameter.m",2,"9.MixedIntSlope_Site",0.37739,1.84143,1.61152,NA,NA,1.01831,1.01831,NA,NA,1.01831
+10,10,"MixedIntSlope","Species&Site","Height.m, WoodDensity.g.cm3",2,"10.MixedIntSlope_Species&Site",0.86241,2.87206,0.12847,NA,NA,1.00034,1.00034,NA,NA,1.00034
+10,10,"MixedInt","Species","Height.m, WoodDensity.g.cm3",2,"10.MixedInt_Species",0.76783,3.03472,0.16193,NA,NA,1.00092,1.00092,NA,NA,1.00092
+10,10,"MixedIntSlope","Species","Height.m, WoodDensity.g.cm3",2,"10.MixedIntSlope_Species",1.07249,3.03332,0.03227,NA,NA,1,1,NA,NA,1
+10,10,"MixedIntSlope","Site","Height.m, WoodDensity.g.cm3",2,"10.MixedIntSlope_Site",0.74803,3.23946,0.12493,NA,NA,1.00053,1.00053,NA,NA,1.00053
+11,11,"MixedInt","Species&Site","CanopyDiameter.m, WoodDensity.g.cm3",2,"11.MixedInt_Species&Site",0.64144,2.88251,-0.13487,NA,NA,1.00503,1.00503,NA,NA,1.00503
+11,11,"MixedIntSlope","Species&Site","CanopyDiameter.m, WoodDensity.g.cm3",2,"11.MixedIntSlope_Species&Site",0.64821,2.8796,-0.12854,NA,NA,1.00197,1.00197,NA,NA,1.00197
+11,11,"MixedInt","Species","CanopyDiameter.m, WoodDensity.g.cm3",2,"11.MixedInt_Species",0.60912,3.05553,-0.15317,NA,NA,1.00006,1.00006,NA,NA,1.00006
+11,11,"MixedIntSlope","Species","CanopyDiameter.m, WoodDensity.g.cm3",2,"11.MixedIntSlope_Species",0.60776,3.04553,-0.08702,NA,NA,1.00001,1.00001,NA,NA,1.00001
+11,11,"MixedIntSlope","Site","CanopyDiameter.m, WoodDensity.g.cm3",2,"11.MixedIntSlope_Site",0.3023,3.1135,-0.09881,NA,NA,1.00007,1.00007,NA,NA,1.00007
+12,12,"MixedIntSlope","Species&Site","DBH.cm, Height.m, CanopyDiameter.m",3,"12.MixedIntSlope_Species&Site",1.50954,1.56549,0.58992,0.66998,NA,1.20652,1.07902,1.12827,NA,1.20652
+12,12,"MixedInt","Species","DBH.cm, Height.m, CanopyDiameter.m",3,"12.MixedInt_Species",1.30346,1.21866,0.91112,0.88757,NA,11.78256,5.53578,5.08383,NA,11.78256
+12,12,"MixedIntSlope","Species","DBH.cm, Height.m, CanopyDiameter.m",3,"12.MixedIntSlope_Species",1.305,1.22245,0.87025,0.90956,NA,2.44525,1.47338,1.83498,NA,2.44525
+12,12,"MixedInt","Site","DBH.cm, Height.m, CanopyDiameter.m",3,"12.MixedInt_Site",1.22836,1.17193,0.97197,0.95981,NA,8.99462,5.27067,3.5391,NA,8.99462
+12,12,"MixedIntSlope","Site","DBH.cm, Height.m, CanopyDiameter.m",3,"12.MixedIntSlope_Site",1.44676,1.46149,0.63254,0.78857,NA,1.30518,1.09568,1.20655,NA,1.30518
+13,13,"MixedInt","Species&Site","DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.MixedInt_Species&Site",1.86422,1.81758,0.67338,0.16521,NA,5.82915,5.82021,1.00401,NA,5.82915
+13,13,"MixedIntSlope","Species&Site","DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.MixedIntSlope_Species&Site",1.91903,1.94811,0.4978,0.15643,NA,1.12472,1.12431,1.00045,NA,1.12472
+13,13,"MixedInt","Species","DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.MixedInt_Species",1.90817,1.86138,0.61108,0.16761,NA,5.05013,5.04648,1.00207,NA,5.05013
+13,13,"MixedIntSlope","Species","DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.MixedIntSlope_Species",1.93024,1.88244,0.56326,0.17731,NA,2.08542,2.08359,1.00134,NA,2.08542
+13,13,"MixedInt","Site","DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.MixedInt_Site",1.86422,1.81758,0.67338,0.16521,NA,5.82915,5.82021,1.00401,NA,5.82915
+13,13,"MixedIntSlope","Site","DBH.cm, Height.m, WoodDensity.g.cm3",3,"13.MixedIntSlope_Site",1.92139,1.93941,0.50388,0.15692,NA,1.1475,1.14696,1.00065,NA,1.1475
+14,14,"MixedIntSlope","Species&Site","DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.MixedIntSlope_Species&Site",1.82611,1.95438,0.5675,0.09559,NA,1.03113,1.04903,1.01934,NA,1.04903
+14,14,"MixedInt","Species","DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.MixedInt_Species",1.84825,1.86737,0.6367,0.11143,NA,4.75572,4.77859,1.02282,NA,4.77859
+14,14,"MixedIntSlope","Species","DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.MixedIntSlope_Species",1.85025,1.86449,0.6646,0.12561,NA,1.33812,1.41252,1.07252,NA,1.41252
+14,14,"MixedIntSlope","Site","DBH.cm, CanopyDiameter.m, WoodDensity.g.cm3",3,"14.MixedIntSlope_Site",1.84839,1.95276,0.5684,0.10888,NA,1.03971,1.08297,1.04733,NA,1.08297
+15,15,"MixedIntSlope","Species&Site","Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.MixedIntSlope_Species&Site",0.35826,1.87293,1.56954,0.02527,NA,1.01878,1.01935,1.01496,NA,1.01935
+15,15,"MixedInt","Species","Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.MixedInt_Species",0.69889,1.53858,1.66116,0.01768,NA,5.32366,5.27264,1.0657,NA,5.32366
+15,15,"MixedIntSlope","Species","Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.MixedIntSlope_Species",0.66746,1.61232,1.57076,0.03283,NA,1.02395,1.01999,1.01753,NA,1.02395
+15,15,"MixedIntSlope","Site","Height.m, CanopyDiameter.m, WoodDensity.g.cm3",3,"15.MixedIntSlope_Site",0.37458,1.86897,1.58743,0.03156,NA,1.0277,1.0336,1.02375,NA,1.0336
+16,16,"MixedInt","Species&Site","DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.MixedInt_Species&Site",1.2968,1.25076,0.95389,0.84245,0.10201,9.27681,5.30645,3.7976,1.09251,9.27681
+16,16,"MixedIntSlope","Species&Site","DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.MixedIntSlope_Species&Site",1.40764,1.48634,0.64103,0.73846,0.09706,1.85376,1.18347,1.65157,1.01412,1.85376
+16,16,"MixedInt","Species","DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.MixedInt_Species",1.30703,1.22461,0.91141,0.87615,0.1004,11.55534,5.10315,5.38479,1.08854,11.55534
+16,16,"MixedIntSlope","Species","DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.MixedIntSlope_Species",1.33221,1.2476,0.86036,0.87508,0.10284,3.98885,1.74403,2.96903,1.08633,3.98885
+16,16,"MixedInt","Site","DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.MixedInt_Site",1.2968,1.25076,0.95389,0.84245,0.10201,9.27681,5.30645,3.7976,1.09251,9.27681
+16,16,"MixedIntSlope","Site","DBH.cm, Height.m, CanopyDiameter.m, WoodDensity.g.cm3",4,"16.MixedIntSlope_Site",1.5137,1.56153,0.59859,0.65671,0.09839,1.23055,1.09295,1.18459,1.05733,1.23055

@@ -44,6 +44,7 @@ install.packages("remotes")
 ##  then install from github
 remotes::install_github("BBranoff/treellometry@ecoinf")
 library(treellometry)
+library(dplyr)
 ```
 
 With the library successfully loaded, the following methods will
@@ -92,6 +93,7 @@ predictorvars <- c("DBH.cm","Height.m","CanopyDiameter.m","WoodDensity.g.cm3","C
 groupvars = c("Species", "Site")
 
 mods <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars)
+mods_scaled <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars,scle=TRUE)
 ```
 
 ## A look inside ‘explore_allom_models()’
@@ -138,17 +140,18 @@ the non-scaled data.
 ```
 
 Next, we begin to loop through each of the predictor variables and build
-and fit models with different combinations if those variables. Here, we
+and fit models with different combinations of those variables. Here, we
 use k to denote the number of predictor variables in the equation. A k
 of 1 is a simple regression and a k greater than one is multiple
 regression with more than one predictor. Two important exclusions are
 happening below. The first is that the ‘WoodDensity’ variable is not
 included in simple regression because its values are generalized for
-each species and are not location specific. Second, is that composite
-variables are not included in multiple regression because they are
-already a combination of multiple variables and it simply doesnt make
-sense in our case to include the influence of a variable twice in the
-same model.
+each species and are not location specific, thus it doesnt make sense to
+include a random effects model for this variable. Second, is that
+composite variables are not included in multiple regression because they
+are already a combination of multiple variables and it simply doesnt
+make sense in our case to include the influence of a variable twice in
+the same model.
 
 ``` r
 for (k in 1:length(predictorVars)) {
@@ -170,7 +173,9 @@ computing all possible combinations of those variables. This is
 important because evaluating variable importance depends upon the order
 in which a variable is present within a multiple regression model. As an
 example, here is the result of combining all of the predictor variables
-and then permutating their combinations
+and then permutating their combinations. In the below print out, each
+row is a set of predictors that will be used in a model. There are 24
+different models that could be generated from this set of 4 variables.
 
 ``` r
 combos <- combn(predictorvars[!grepl("Comp",predictorvars)], 4, simplify = FALSE)
@@ -210,13 +215,14 @@ print(perms)
 
 Next, each of the permutations in ‘perms’ (each row of the above table)
 is used in both a fixed effects model as well as various mixed effects
-models. The result of the below is one fixed effects model for biomass
-from the unique combination of predictor variables. This is repeated for
-each unique combination and each model is added to a list of all the
-models, with the name reflecting the ‘family’ of the model (basically,
-which set of predictors was used) as well as the level of fixed or mixed
-effects. These names are important for identifying and evaluating model
-families in post-hoc analyses.
+models. Running the below script produces one fixed effects model for
+biomass from the unique combination of predictor variables in
+perms\[p,\] (the pth row of a table like the one above). This is
+repeated for each unique combination and each model is added to a list
+of all the models, with the name reflecting the ‘family’ of the model
+(basically, which set of predictors was used) as well as the level of
+fixed or mixed effects. These names are important for identifying and
+evaluating model families in post-hoc analyses.
 
 ``` r
 ###  unseen in this script is that p is one row of the above printed table, basically one set of predictor variables. 
@@ -236,11 +242,19 @@ mods <- append(mods,list(fixed_model))
 names(mods)[length(mods)] <- paste0(model,".Fixed")
 ###  get summary stats
 fixed_summary <- summary(fixed_model)
+##  run cross validation and get the mse for each fold
+cv <- cv::cv(fixed_model, data_clean, k=10, details=TRUE)
 ##  Akaike and Bayesian Information Criteria
 AIC_fixed <- AIC(fixed_model)
 BIC_fixed <- BIC(fixed_model)
 ##  Root Mean Squared Error
 RMSE_fixed <- sqrt(mean(resid(fixed_model)^2))
+##  The standardized RMSE, as a fraction of the mean response variable
+RMSE_fixed_std <-  RMSE_fixed/mean(data_clean[,paste0("log", responseVar)],na.rm=TRUE)
+##  The cross validated mean of the RMSE
+RMSE_CVmean_fixed <-  mean(sqrt(cv$details$criterion),na.rm=TRUE)
+##  The cross validated standard deviation of the RMSE
+RMSE_CVsd_fixed <-  sd(sqrt(cv$details$criterion),na.rm=TRUE)
 ## r-squared
 R2_fixed <- fixed_summary$r.squared
 ##  sigma
@@ -261,16 +275,34 @@ fixed_cols <- as_tibble_row(setNames(as.list(c(coef(fixed_model),VIF_fixed)),
 ```
 
 The result of the above is one row of a dataframe with some standard
-information about the model. As an example, here is the result for a
-two-variable model of biomass as a function of DBH and height:
+information about the model. As an example, below is the result for a
+two-variable model of biomass as a function of DBH and height. The table
+includes the coefficients for the intercept and the slopes attributed to
+each of the variables, as well as the variance inflation factor (VIF)
+associated with each predictor. Notice here that although VIF is not
+really a coefficient and is more of a metric of model performance and
+validity, we include it in the coefficients table because there is a
+value associated with each variable, much like each slope coefficient.
+Notice also that we identify each variable as var1, var2, etc., instead
+of their actual names, because we will include them all in the same
+table and need to maintain consistent column names. The performance
+metrics of the fixed effects models are demonstrated further below, as
+they will be included with those from mixed effects models from the same
+set of predictor variables.
+
+    ## Warning: Using `across()` in `filter()` was deprecated in dplyr 1.0.8.
+    ## ℹ Please use `if_any()` or `if_all()` instead.
+    ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
+
+    ## R RNG seed set to 393226
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
     ##                 <dbl>            <dbl>            <dbl>          <dbl>          <dbl>
-    ## 1                1.90            0.618             1.85           5.05           5.05
+    ## 1                1.90             1.85            0.618           5.05           5.05
 
 Next are the more complicated mixed effects models. For every fixed
-effects model there are six mixed effects model, three for random
+effects model there are six mixed effects models, three for random
 intercepts only (one for each of the grouping variables and another that
 has both grouping variables) and three also for random intercepts and
 slopes. In the below code, these model structures are created but the
@@ -313,10 +345,10 @@ mmmods <- c(paste0(paste(groupvars,collapse=""),c("int","intslope")),outer(group
 
 As an example of the above product, below are all of the model
 structures for the first set of models, which use DBH as a predictor.
-The firs model, the fixed effects model has already been run at this
+The first model, the fixed effects model has already been run at this
 point, but the remaining models have not, we have only established their
-structure at this point. We will run each one individually in the next
-step, as well as collect coefficient and performance information.
+structure. We will run each one individually in the next step, as well
+as collect coefficient and performance information.
 
     ##                                                                model                         name                                               description
     ## 1                                              logAGB.kg ~ logDBH.cm                      1.Fixed                                       fixed effects model
@@ -342,7 +374,7 @@ r-squared returned here is the ‘conditional r-squared’. This is the
 r-squared value considering both fixed and mixed effects. See
 MuMIn::r.squaredGLMM for more information. In the end, we add together
 the collected metrics and coefficients for the fixed effects model and
-all of the mixed effects model for the current predictor set.
+all of the mixed effects models for the current predictor set.
 
 ``` r
 ###  for each of the ME model formula templates, run the combinations
@@ -373,6 +405,12 @@ for(mm in 1:length(mixed_formula_int)){
       BIC_mixed <- append(BIC_mixed,BIC(mixed_model))
       ## Root mean squared error
       RMSE_mixed <- append(RMSE_mixed ,sqrt(mean(resid(mixed_model)^2)))
+      ## The standardized RMSE, again against the mean of the response variable
+      RMSE_mixed_std = append(RMSE_mixed_std,sqrt(mean(resid(mixed_model)^2))/mean(data_clean[, paste0("log", responseVar)],na.rm=TRUE))
+      ## The mean of the cross validated RMSE
+      RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed , mean(sqrt(cv$details$criterion),na.rm=TRUE))
+      ## The standard deviation of the cross validated RMSE
+      RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed , sd(sqrt(cv$details$criterion),na.rm=TRUE))
       #  variance inflation factor
       if (k>1){VIF_mixed <- car::vif(mixed_model)}else{VIF_mixed <-NA}
       ##  add the coefficients together
@@ -387,6 +425,9 @@ for(mm in 1:length(mixed_formula_int)){
       AIC_mixed <- append(AIC_mixed,NA)
       BIC_mixed <- append(BIC_mixed,NA)
       RMSE_mixed <- append(RMSE_mixed,NA)
+      RMSE_mixed_std <- append(RMSE_mixed_std,NA)
+      RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed,NA)
+      RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed,NA)
       ICC <- append(ICC,NA)
       VIF_mixed <- append(VIF_mixed,NA)
       coefs_mixed[[M]] <- setNames(rep(NA, length(log_preds) + 1),
@@ -404,9 +445,12 @@ for(mm in 1:length(mixed_formula_int)){
     AIC_Fixed = AIC_fixed,
     BIC_Fixed = BIC_fixed,
     RMSE_Fixed = RMSE_fixed,
+    RMSE_Fixed_Std = RMSE_fixed_std,
+    RMSE_CVmean_Fixed = RMSE_CVmean_fixed,
+    RMSE_CVsd_Fixed = RMSE_CVsd_fixed,
     ) |> mutate(MixedEffects=ME) |>
-    bind_cols(as_tibble_row(setNames(as.list(c(R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,ICC)),
-                                     paste0(rep(c("Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","ICC_Mixed"),each=2),
+    bind_cols(as_tibble_row(setNames(as.list(c(R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_mixed_std,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC)),
+                                     paste0(rep(c("Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE_Mixed_Std","RMSE_CVmean_Mixed","RMSE_CVsd_Mixed","ICC_Mixed"),each=2),
                                             c("Int","IntSlope")))))
   coef_row <- tibble(
     VarGroup = varGroup,
@@ -426,18 +470,389 @@ model coefficents for all of the models within a given ‘family’, that is
 all of the models that use the same set of predictors but with different
 combinations of mixed effects. This is done for all of the families, and
 the results are combined together into a master data frame containing
-all of the information from all of the models.
+all of the information from all of the models. Notice how the first half
+of the columns in the below tables are all the same because they relate
+to the fixed effects only. Values begin to change in the right-most
+sides of the tables, which reflect differences in mixed-effects. These
+tables are designed to be able to compare the fixed effects values with
+the different mixed-effects values, thus the fixed-effects information
+is repeated for each row to allow for easier comparisons across each row
+rather than down each column (although that can still be done to compare
+the mixed effects models).
 
     ## # A tibble: 3 × 21
     ##   VarGroup Model            NumPredictors Rsq_Fixed Sig_Fixed AIC_Fixed BIC_Fixed RMSE_Fixed MixedEffects Rsq_MixedInt Rsq_MixedIntSlope Sig_MixedInt Sig_MixedIntSlope AIC_MixedInt AIC_MixedIntSlope BIC_MixedInt BIC_MixedIntSlope RMSE_MixedInt RMSE_MixedIntSlope ICC_MixedInt ICC_MixedIntSlope
     ##      <dbl> <chr>                    <dbl>     <dbl>     <dbl>     <dbl>     <dbl>      <dbl> <chr>               <dbl>             <dbl>        <dbl>             <dbl>        <dbl>             <dbl>        <dbl>             <dbl>         <dbl>              <dbl>        <dbl> <lgl>            
-    ## 1        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Species&Site        0.966             0.979        0.401             0.322         442.              319.         466.              383.         0.396              0.316        0.229 NA               
-    ## 2        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Species             0.966             0.979        0.401             0.322         442.              319.         466.              383.         0.396              0.316        0.229 NA               
-    ## 3        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Site                0.966             0.979        0.401             0.322         442.              319.         466.              383.         0.396              0.316        0.229 NA
+    ## 1        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Species&Site        0.969             0.975        0.383             0.342         344.              297.         367.              358.         0.379              0.337       0.244  NA               
+    ## 2        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Species             0.963             0.966        0.411             0.394         377.              365.         396.              403.         0.410              0.391       0.0906 NA               
+    ## 3        6 Height.m, DBH.cm             2     0.955     0.458      523.      539.      0.457 Site                0.967             0.979        0.399             0.318         365.              236.         384.              275.         0.396              0.314       0.180  NA
 
     ## # A tibble: 3 × 19
     ##   VarGroup MixedEffects Model            NumPredictors `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed `(Intercept)_MixedInt` slope.var1_MixedInt slope.var2_MixedInt VIF.var1_MixedInt VIF.var2_MixedInt `(Intercept)_MixedIntSlope` slope.var1_MixedIntSlope slope.var2_MixedIntSlope VIF.var1_MixedIntSlope VIF.var2_MixedIntSlope
     ##      <dbl> <chr>        <chr>                    <dbl>               <dbl>            <dbl>            <dbl>          <dbl>          <dbl>                  <dbl>               <dbl>               <dbl>             <dbl>             <dbl>                       <dbl>                    <dbl>                    <dbl>                  <dbl>                  <dbl>
-    ## 1        6 Species&Site Height.m, DBH.cm             2                1.90            0.618             1.85           5.05           5.05                   1.87               0.656                1.83              6.04              6.04                        1.92                    0.504                     1.95                   1.17                   1.17
-    ## 2        6 Species&Site Height.m, DBH.cm             2                1.90            0.618             1.85           5.05           5.05                   1.87               0.656                1.83              6.04              6.04                        1.92                    0.504                     1.95                   1.17                   1.17
-    ## 3        6 Species&Site Height.m, DBH.cm             2                1.90            0.618             1.85           5.05           5.05                   1.87               0.656                1.83              6.04              6.04                        1.92                    0.504                     1.95                   1.17                   1.17
+    ## 1        6 Species&Site Height.m, DBH.cm             2                1.90             1.85            0.618           5.05           5.05                   1.79                1.87               0.720              3.32              3.32                        1.92                     1.91                    0.593                   1.12                   1.12
+    ## 2        6 Species&Site Height.m, DBH.cm             2                1.90             1.85            0.618           5.05           5.05                   1.84                1.86               0.651              4.70              4.70                        1.84                     1.85                    0.686                   1.32                   1.32
+    ## 3        6 Species&Site Height.m, DBH.cm             2                1.90             1.85            0.618           5.05           5.05                   1.73                1.80               0.837              3.11              3.11                        1.79                     1.87                    0.699                   1.06                   1.06
+
+We have now collected all relevant models, with varying combinations of
+predictor variables and mixed effects. The ‘mods’ object contains the
+actual models as well as tables of their coefficients, various model
+performance metrics, and predictions from the models. We will now sort
+through, filter, and rank the models based on these performance metrics.
+Remember that while performance metrics are best scrutinized on models
+in which variables were scaled, model coefficients only make sense for
+unscaled variables. Focusing first on the model performance metrics,
+with scaled data, we first arrange and rank the models based on their
+performance.
+
+``` r
+##  take the results and round the values for aesthetics 
+performance <- mods_scaled$results%>%
+  mutate(across(6:26,~round(.x,5)))
+##  pivot the table and categorize metrics and models
+performance_long <- performance %>%
+  tidyr::pivot_longer(Rsq_Fixed:ICC_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) %>%
+  mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
+         ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
+  distinct(across(1:7),.keep_all = TRUE)
+##  rank the models based on their metrics
+performance_ranked <- performance_long
+performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
+                        ##  we separate the fixed effects models from the mixed effects models because the fixed effects
+                        ##  information is repeated in the rows pertaining to the same model family.
+                        ##  So, we can then remove the duplicated fixed effects information for brevity. 
+                        performance_ranked %>% filter(Effects=="Fixed")%>%
+                          distinct(Model,Metric,.keep_all = TRUE)%>%
+                          mutate(MixedEffects=NA))%>%
+  ###  for each metric, rank the values from each model.
+  group_by(Metric)%>%
+  ###  first across all models 
+  ###  If R-squared, we want the highest value but all other values are optimized at the minimum
+  mutate(globalrank=if_else(Metric %in% c("Rsq"),rank(-value),rank(value)))%>%
+  ungroup()%>%
+  group_by(Metric,VarGroup)%>%
+  ###  then the same within model "families"
+  mutate(familyrank=if_else(Metric %in% c("Rsq"),rank(-value),rank(value)))%>%
+  ungroup()%>%
+  ##  now pivot back to wider with the rankings
+  tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank")) %>%
+  rowwise()%>%
+  ##  compute the mean of the ranks for each model family, this we calle the 'global rank'
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE,globalrank_Sig)),
+         globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean))%>%
+  ungroup()%>%
+  ###  now create a master global rank based on the means
+  mutate(globalrank=rank(globalranks_mean)) %>%
+  group_by(VarGroup)%>%
+  ##  same for the family ranks
+  mutate(familyrank=rank(globalranks_mean))%>%
+  ungroup()%>%
+  relocate(globalrank,familyrank,.after=Effects)%>%
+  arrange(globalrank)
+##  filter the ranked models. Here, we take the best model within a 'family', which is a group of models sharing the same predictors. 
+performance_rank_filtered <- performance_ranked %>%
+  tidyr::separate(Model,sep=",",into=c("Var1","Var2","Var3","Var4"),remove=FALSE)%>%
+  mutate(across(c(Var1:Var4),~gsub(" ","",.x)),
+         across(c(Var1:Var4),~if_else(.x=="DBH",1,if_else(.x=="Height",2,if_else(.x=="CanopyDiameter",3,4)))))%>%
+  rowwise()%>%
+  filter(!is.unsorted(c(Var1,Var2,Var3,Var4),na.rm=TRUE))%>%
+  arrange(globalrank) %>%
+  ###  Here is where we keep the highest ranking model for each family
+  distinct(VarGroup,MixedEffects,Effects,.keep_all = TRUE)%>%
+  relocate(ModelN) %>%
+  select(-c(Var1:Var4))
+##  attach the VIF values from the coefficients table, this time sourced from the unscaled data
+coef <- mods$coefs |>
+  mutate(across(6:32,~round(.x,5)))|>
+  rowwise()|>
+  mutate(maxVIF_Fixed=max(c_across(c(VIF.var1_Fixed,VIF.var2_Fixed,VIF.var3_Fixed,VIF.var4_Fixed)),na.rm=TRUE),
+         maxVIF_MixedInt=max(c_across(c(VIF.var1_MixedInt,VIF.var2_MixedInt,VIF.var3_MixedInt,VIF.var4_MixedInt)),na.rm=TRUE),
+         maxVIF_MixedIntSlope=max(c_across(c(VIF.var1_MixedIntSlope,VIF.var2_MixedIntSlope,VIF.var3_MixedIntSlope,VIF.var4_MixedIntSlope)),na.rm=TRUE))
+coef_long <- coef %>%
+  tidyr::pivot_longer('(Intercept)_Fixed':maxVIF_MixedIntSlope,names_sep = "_",names_to =c("Coefficient","Effects")) %>%
+  mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
+         ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
+  distinct(across(1:7),.keep_all = TRUE)
+coef_wide <- coef_long %>%
+  tidyr::pivot_wider(names_from=Coefficient)%>%
+  relocate(ModelN,Effects,.before=MixedEffects)
+performance_rank_filtered <- performance_rank_filtered %>% 
+  left_join(coef_wide%>%select(ModelN,MixedEffects,Effects,maxVIF),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))%>%
+  relocate(maxVIF,.after=value_ICC)
+coefs_filtered <- coef_wide %>%
+  filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance_rank_filtered$ModelN,performance_rank_filtered$MixedEffects,performance_rank_filtered$Effects)) %>%  relocate(ModelN)
+coefs_filtered <- coefs_filtered[match(paste0(performance_rank_filtered$ModelN,performance_rank_filtered$MixedEffects,performance_rank_filtered$Effects),
+                                       paste0(coefs_filtered$ModelN,coefs_filtered$MixedEffects,coefs_filtered$Effects)), ]
+performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,globalrank,value_Rsq:value_ICC) %>%
+  left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
+```
+
+The above created tables are stored in ‘Tables’ folder of this
+repository. Although they all contain the same identifying information
+that allows for comparisons across tables (coefficients versus
+performance metrics), the filenames of the tables indicate that while
+the performance metrics come from models in which variables were scaled
+prior to fitting, the coeficient tables do not. This is important to
+note for interpretation and for replication.
+
+We now have a dataset (performance_rank_filtered) with the top
+performing model from each family of predictor variables, ranked also by
+the performance against each other. Remember, however, that these
+rankings are somewhat arbitrary and based primarily upon our ability to
+logistically sort a large number of models. Different rankings could be
+applied for different objectives (prioritize RMSE, for example). Still,
+this gives us a general idea of which models are performing ‘best’. We
+are left with around 100 models, which is still a considerable number.
+
+We now want to test the assumptions of each model. Again, we are looking
+for a reasonable way to evaluate a large number of models. Using the
+convenient ‘check_model()’ function from the performance package, we can
+produce excellent visualizations for pertinent assumptions. These are
+stored in the ‘Assumptions’ folder of the repository. Upon examining the
+graphics, it seems many of the top models do a good to decent job of
+meeting the primary assumptions. Again, because these assumptions have
+varying consequences depending on the objectives of the model
+(predictions versus comparisons) it is the user’s responsibility to
+scrutinize these assumption tests according to their objectives. The
+results of the below are included the “Assumptions” folder and below is
+one example from the ‘top’ model.
+
+``` r
+######  testing assumptions on the top ranked models
+checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
+  pdf(file = paste0("./Assumptions/",x,"-model_checks.pdf"), width = 9, height = 11)
+  print(performance::check_model(mods$mods[[x]]))
+  dev.off()
+})
+```
+
+<div class="figure">
+
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpCeLw6I\file7518839ea2.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<p class="caption">
+Fig. 1 An example of the assumptions plots for model
+‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
+model assumptions. Many of the top-performing models seem to be
+satisfactory in meeting these assumptions, but some are not. All top
+model assumption plots are stored in the ‘Assumptions’ folder of the
+repository.
+</p>
+
+</div>
+
+We can also now begin to examine some of the results more closely. One
+way to scrutinize the performance of multiple models is through the
+compare_perfomace function from the performance package. This function
+will evaluate multiple performance metrics, in our case sigma, RMSE, R2,
+AIC and BIC, across all of the models and produce spider plots with
+relative values for all. The spider plots indicate the ‘best’ model as
+the one with the largest area, allowing for easier visual comparisons.
+
+In the below example, the performance plot for the ‘best’ family of
+models is shown. In the plot, the most complex model, with random slopes
+and intercepts on species and site, seems to perform ‘better’. But this
+is debatable depending on which metrics are prioritized. If BIC (which
+penalized complexity) is prioritized, a simpler model with only random
+effects on site, may be optimal. Either way, its clear that these mixed
+effects models out-perform the fixed effects version.
+
+``` r
+####  model peformance charts
+####  select the top filtered models
+modskeep_df <- performance_rank_filtered %>%
+  select(ModelN)
+modskeep <- mods_scaled$mods[grep(paste0(modskeep_df%>%pull(ModelN),".",collapse="|"),names(mods_scaled$mods))]
+###  use an lapply function to iterate over the models and compute the performance comparisons in groups
+perfs <- lapply(modskeep_df%>%pull(ModelN)|>unique(),
+                ##  the performance comparison
+                FUN=function(x,mds){ 
+                  perf <- performance::compare_performance(mds[which(sapply(strsplit(names(mods_scaled$mods),"\\."),"[[",1)==x)],metrics=c("SIGMA","RMSE","AIC","BIC")) %>%mutate(mod=x)
+                ##  add in progress bar for sanity check
+                  cat(paste0("\r",round(100*which(x==unique(modskeep_df$ModelN))/length(unique(modskeep_df$ModelN)))))
+                  perf
+                }
+                ,mds=mods_scaled$mods)
+###  these can be used individually to assess models within families
+plot(perfs[[1]])
+```
+
+![](README_files/figure-gfm/performance1-1.png)<!-- -->
+
+However, it may also be pertinent to compare models both within their
+family as well as among the other families as well. The performance
+package does not offer this functionality, but we can replicate it. In
+the below code, we arrange the different metrics among the models in
+such a way so as to replicate the output of compare_performance. We then
+scale the metric values so that they are comparable across all of the
+families. Although doing this makes it slightly more difficult to
+compare models within families (because the differences are now
+relatively small) it allows for direct comparisons with the other
+families.
+
+``` r
+###  get the stored results for those models
+perfs2 <- lapply(modskeep_df |>
+                   pull(ModelN)|>unique(),
+                 FUN=function(x) performance%>%filter(ModelN==x) |>
+                   select(Model,ModelN,MixedEffects,Rsq_Fixed:Sig_MixedIntSlope) |>
+                   tidyr::pivot_longer(cols=Rsq_Fixed:Sig_MixedIntSlope,names_sep ="_",names_to=c("metric","effects")) |>
+                   mutate(Name=paste0("mod",ModelN,"_",MixedEffects,effects)) |>
+                   tidyr::pivot_wider(names_from="metric") |>
+                   filter(!(effects=="Fixed"&MixedEffects %in% c("Species","Site")))%>%rename(Sigma=Sig))
+
+perfs2 <- do.call(rbind,perfs2) |>
+  mutate(Model.x=if_else(grepl("Mixed",effects),"lmerMod","lm"),
+         Model.y=Model) |>
+  # separate the random effects and the random variables
+  # these will help in visualizing among multiple families by using the same colors for each group
+  tidyr::separate(Name,sep="(?=int|Int)",remove=FALSE, into=c("RandomVars","RandomEffects")) |>
+  tidyr::separate(RandomVars,sep="(?<=_)",remove=FALSE, into=c("Name2","RandomVars"))%>%
+  group_by(Name2) |>
+  mutate(RandomVars=if_else(Model.x=="lm","none",paste0("Random ",gsub("Mixed","",RandomVars)," on ")),
+         RandomVars = if_else(RandomVars=="Random Species&Site on ","Random Species & Site on ",RandomVars),
+         RandomEffects=if_else(Model.x=="lm","none",gsub("Int","Int.",RandomEffects)),
+         RandomEffects = if_else(RandomEffects=="Int.Slope", "Int. & Slope",RandomEffects),
+         ###  create the title for each panel, which includes the minimum RMSE for each family
+         Model.y = paste0(Model.y,"\n RMSE: ",round(min(RMSE,na.rm=TRUE),2))) |>
+  ungroup() |>
+  arrange(RMSE) |>
+  mutate(Model.y=factor(Model.y,levels=unique(Model.y))) %>%
+  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMSE"))|>
+  group_by(name) |>
+  ###  re-scale the metrics so that the spiderwebs are comparable across families
+  mutate(value2=if_else(name %in% c("RMSE","Sigma","AIC","BIC"),scales::rescale(-value,to=c(0.1,1)),
+                        scales::rescale(value,to=c(0.1,1))),
+         group=paste(RandomVars,RandomEffects,sep=" "),
+         group=if_else(group=="none none","Fixed",group)) |>
+  ungroup()
+  
+###  plot the performance plots
+perfs2 %>%
+  ggplot(aes(x=name,y=value2,color=group,group=group))+
+  facet_wrap(~Model.y,scales="free",ncol =4,labeller=label_wrap_gen(width = 20))+
+  geom_polygon(linewidth=1,alpha=0)+
+  see::coord_radar()+
+  scale_y_continuous(limits=c(0,1))+
+  guides(color=guide_legend("Model Type",ncol=2)) +
+  theme_bw()+
+  theme(axis.text =element_blank(),axis.title = element_blank(), axis.ticks=element_blank(),legend.position = "bottom",legend.direction =
+        "horizontal",panel.grid = element_line(color = "grey"))
+```
+
+![](README_files/figure-gfm/performance2-1.png)<!-- -->
+
+We can also examine more closely the random effects of the models. Their
+effect size is an indication of how important the groups (species and
+site in our case) are in the overall variability in biomass. Here, for
+simplicity we examine only the simple regression (uni-variate) models
+with the most complex combination of mixed effects (random slopes and
+intercepts on both variables).
+
+The below graphic indicates random effects as a standardized deviation
+from 0, which is at the center of each panel and marked with a dotted
+line. Any deviation that is farther from zero than the corresponding
+error bar (solid horizontal ‘wings’ for each dot) indicates a
+significant random effect. For the most part, the random effects for
+these three models are insignificant, which suggests that site and
+species are not contributing substantially to the allometric models and
+global models might be warranted. However, there are exceptions. Height
+within sites demonstrate the largest effect sizes, suggesting that using
+height as a predictor of biomass may be location dependent. This is
+consistent with previous studies that have recognized the latitudinal
+variability in mangrove height and the relationship between height and
+biomass [Rovai et al. 2021](%22https://doi.org/10.1111/geb.13268%22),
+and is an important consideration when utilizing LiDAR or other remote
+sensing techniques that rely heavily on height metrics for biomass
+estimation. Species, on the other hand, was not found to be a
+significant random effect, suggesting that these allometric
+relationships are consistent across the three Trans-Atlantic species.
+Future work will expand to other species and test this relationship.
+
+``` r
+library(lme4)
+random_effects <- rbind(as.data.frame(ranef(mods_scaled$mods[[3]])) %>% mutate(pred="DBH"),
+                        as.data.frame(ranef(mods_scaled$mods[[10]])) %>% mutate(pred="Height"),
+                        as.data.frame(ranef(mods_scaled$mods[[17]])) %>% mutate(pred="Canopy Diameter"))%>%#,%
+  mutate(grp=factor(grp,levels=c(rev(sort(unique(as.character(grp[grpvar=="Species"])))),rev(sort(unique(as.character(grp[grpvar=="Site"])))))))
+# lattice::qqmath(ranef(mods_scaled$mods[[3]], strip =TRUE))
+ggplot(random_effects %>% mutate(term=if_else(term=='(Intercept)',"Intercept","Slope"))%>%
+         filter(pred!="Wood Density"), aes(y = grp, x = condval)) +
+  geom_errorbar(aes(xmin = condval - 2*condsd, xmax = condval + 2*condsd),width=0) +
+  geom_point(aes(fill=grpvar),shape=21,col="black",size=3) +
+  #scale_shape_manual(values=c(21:23))+
+  facet_grid(term~pred)+# Assuming 'se_intercept' is available
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_vline(xintercept=0,lty=2,col="darkgrey")+
+  guides(fill=guide_legend("Random Effect\nVariable"))+
+  xlab("Conditional Mode")+ylab("Group")+
+  theme_bw()
+```
+
+![](README_files/figure-gfm/randomeffects-1.png)<!-- -->
+
+<!-- ```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE} -->
+<!-- predsMM <-mods$predsMM -->
+<!-- predsF <-mods$predsF -->
+<!-- ####  variation in models at each site? -->
+<!-- gg_preds1 <- predsMM %>% -->
+<!--   #select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
+<!--   left_join(predsF |>select(ID,contains("preds_")),by=join_by(ID))%>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>% -->
+<!--   filter(!grepl("Site",RandomVars))%>% -->
+<!--   ggplot(aes(x=logDBH.cm,y=logAGB.kg,col=Species))+ -->
+<!--   geom_point(alpha=1)+ -->
+<!--   geom_line(aes(y=value,lty=RandomEffects))+ -->
+<!--   #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+ -->
+<!--   facet_grid(Species~Site)+ -->
+<!--   #scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+ -->
+<!--   scale_linetype_manual(values=c(1,2,4))+ -->
+<!--   theme_bw() -->
+<!-- gg_preds2 <- predsMM %>% -->
+<!--   #select(Dataset:logWoodDensity,contains("mod1_")) %>% -->
+<!--   cbind(predsF %>% select(contains("preds_")))%>%#rename(mod1_none_none = mod1_)) %>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>% -->
+<!--   ggplot(aes(x=logDBH.cm,y=logAGB.kg,shape=Species))+ -->
+<!--   #geom_point(col="darkgrey")+ -->
+<!--   #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+ -->
+<!--   facet_wrap(~Species)+ -->
+<!--   scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+ -->
+<!--   scale_linetype_manual(values=c(1,2,4))+ -->
+<!--   geom_line(aes(y=value,lty=RandomEffects,col=RandomVars))+ -->
+<!--   theme_bw() -->
+<!-- #####   Residual density plot -->
+<!-- predsMM %>% -->
+<!--   select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
+<!--   cbind(predsF %>% select(contains("preds_")))%>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects), -->
+<!--          Residuals = logAGB.kg-value) %>% -->
+<!--   ggplot(aes(x=Residuals,col=RandomVars))+ -->
+<!--   geom_density()+ -->
+<!--   facet_wrap(~RandomEffects)+ -->
+<!--   theme_bw() -->
+<!-- ###  Residuals versus observations -->
+<!-- predsMM %>% -->
+<!--   select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
+<!--   cbind(predsF %>% select(contains("preds_")))%>% -->
+<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
+<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
+<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
+<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
+<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects), -->
+<!--          Residuals = logAGB.kg-value) %>% -->
+<!--   ggplot(aes(x=value,y=Residuals,col=RandomEffects))+ -->
+<!--   geom_point()+ -->
+<!--   facet_wrap(~RandomVars)+ -->
+<!--   theme_bw() -->
+<!-- ``` -->

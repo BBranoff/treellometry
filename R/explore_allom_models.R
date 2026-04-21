@@ -2,7 +2,7 @@
 #' @importFrom lme4 lmer fixef
 #' @importFrom tibble as_tibble_row tibble
 #' @importFrom dplyr mutate filter across left_join select n bind_cols join_by bind_rows cur_group_id last_col relocate group_by ungroup
-explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=TRUE) {
+explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=TRUE,varorder=FALSE) {
   if (responseVar %in% predictorVars) stop("Response variable found in predictor variables")
   # Log-transform response and predictors
   dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
@@ -32,8 +32,10 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     }
     ###  for each of the predictor sets, run the models
     for (predss in combos) {
-      ### establish all potential combinations of the current predictor set (change the order of predictors).
-      perms <- gtools::permutations(length(predss),length(predss),predss)
+      ### if desired, establish all potential combinations of the current predictor set (change the order of predictors).
+      if (varorder) perms <- gtools::permutations(length(predss),length(predss),predss)
+      ## otherwise, just take the single combination of the variables, regardless of order
+      else perms=matrix(predss,ncol=length(predss))
       if (nrow(perms)==0){perms <- matrix(1,nrow = 1,ncol=1)}
       ###  establish the current variable group ID
       varGroup = varGroup + 1
