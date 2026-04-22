@@ -7,7 +7,7 @@ output: github_document
 
 # Coming Soon
 This is the future site of the repository for the journal article:
-Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation.
+Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation..
 
 
 # Abstract
