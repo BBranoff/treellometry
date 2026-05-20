@@ -1,26 +1,30 @@
 ---
-title: "Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation"
-author: Benjamin Branoff & Charles Price.
-date: April 8, 2026
+title: "Treellometry Main"
 output: github_document
 ---
 
-# Coming Soon
-This is the repository for the journal article:
-Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is a placeholder for the Treellometry R package. Future project repositories
+will be placed here. 
+
+For the Ecoinformatics paper entitled: "Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation", navigate to the [ecoinf branch](https://github.com/BBranoff/treellometry/tree/ecoinf)
+
+## Description
+This branch of the repository describes generalized algorithms for assessing tree allometry. For now, this includes:
+
+* Comparing fixed and mixed effects models in predicting tree above ground biomass from standard morphological measurements.  
 
 
-# Abstract
-Accurate estimation of mangrove biomass is key component of the blue carbon economy and allometric equations are a cornerstone of methodological approaches from plot to landscape scales. A perennial question facing investigators is whether global allometric equations can be applied to their biome of interest, or whether local trees need to be harvested to provide accurate estimates. Further, which combinations of tree dimensions provide the most accurate estimates is not always clear. We examined 16 different allometric equations for four tree measures within a global data set for three prominent trans-Atlantic mangroves species. We used mixed effects models with site location and tree species modeled as random effects, and tree DBH, height, canopy diameter and wood density as fixed effects. While the mixed effects model with the greatest number of parameters was the best performing model based on five different statistical measures with a mean error of 1.392 kg, the improvement over simpler models was marginal. Simply measuring the DBH of each tree would only add an additional 380 grams of error per tree compared to the best performing model. These results provide qualified support for the use of global equations and can help subsequent investigators to prioritize data collection efforts.
-
-# Methods
-The methods below can be done manually, by downloading the referenced data and functions from this repository and sourcing them in R, or they can be done by installing the package in R. 
+The methods below can be done manually, by downloading the referenced data and functions from this repository and sourcing them in R, or they can be done by installing the package in R as shown below. 
 
 ```{r false-load-data,results='hide',eval=FALSE,echo=TRUE}
 ##  to install this repository directly, the installation function (remotes) first need to be installed
 install.packages("remotes")
 ##  then install from github
-remotes::install_github("BBranoff/treellometry@ecoinf")
+remotes::install_github("BBranoff/treellometry")
 library(treellometry)
 library(dplyr)
 ```
@@ -50,8 +54,10 @@ dat_scaled <- dat |>
 groupvars = c("Species", "Site")
 ```
 
-With the library successfully loaded, the following methods will demonstrate the workflow documented in the above publication. The first steps are to create the composite variables (product of variables). These are meant to roughly represent tree form (volume) and are commonly used in allometric modelling because two allometric covariables are likely to be correlated, which destabilizes estimates in  multivariate models. Creating a composite variable eliminates this issue, although it does introduce interpretation considerations, as the product of variables isn’t always directly relatable to tree form.
-Here, we also set the response variable, which in our case is always aboveground biomass, as well as the various predictor variables. We also establish the grouping variables, species and location. These will be used to model random effects, which aims to investigate a central premise of this publication, that species and location are significant and substantial in influencing biomass predictions from allometric measurements. In short, mixed effects models will 'partition' the variance in biomass associated with individual species and locations and then attempt to model the remaining variance based on the allometric predictor variables. This is very useful in determining how much of the biomass is species or location specific, and how much depends primarily on the allometric measurements. If a significant and substantial portion of the variance in biomass can be attributed to these grouping variables, that may justify the harvest of local trees to determine location and species specific allometric models. On the other hand, if the mixed effects models determine that an "insubstantial" portion of the variance is due to these grouping variables, harvesting local trees is probably not warranted and the use of 'global' models that apply to all species and all locations is 'good enough'. Ultimately, that decision lies with local managers and scientists, but here we outline a statistical workflow to help make that informed decision. 
+With the library successfully loaded, the following methods will demonstrate a workflow to fit and compare a robust set of models to predict tree above ground biomass. The models are performed on a dataset of harvested mangrove trees in which aboveground biomass was taken along with various morphological measurements (height, diameter, etc.)
+
+The first steps are to create the composite variables (product of variables). These are meant to roughly represent tree form (volume) and are commonly used in allometric modelling because two allometric covariables are likely to be correlated, which destabilizes estimates in  multivariate models. Creating a composite variable eliminates this issue, although it does introduce interpretation considerations, as the product of variables isn’t always directly relatable to tree form.
+Here, we also set the response variable, which usually aboveground biomass, as well as the various predictor variables. We also establish the grouping variables, species and location. These will be used to model random effects, which aim to investigate whether species and location are significant and substantial in influencing biomass predictions from allometric measurements. In short, mixed effects models will 'partition' the variance in biomass associated with individual species and locations and then attempt to model the remaining variance based on the allometric predictor variables. This is very useful in determining how much of the biomass is species or location specific, and how much depends primarily on the allometric measurements. If a significant and substantial portion of the variance in biomass can be attributed to these grouping variables, that may justify the harvest of local trees to determine location and species specific allometric models. On the other hand, if the mixed effects models determine that an "insubstantial" portion of the variance is due to these grouping variables, harvesting local trees is probably not warranted and the use of 'global' models that apply to all species and all locations is 'good enough'. Ultimately, that decision lies with local managers and scientists, but here we outline a statistical workflow to help make that informed decision. 
 For a more detailed outline of mixed-effects modelling in ecology, see [Harrison et al. (2018)](https://doi.org/10.7717/peerj.4794). 
 
 
@@ -75,9 +81,9 @@ mods_scaled <- explore_allom_models(mangroves,responsevar,predictorvars,groupvar
 
 
 ## A look inside 'explore_allom_models()'
-The above use of the 'explore_allom_models()' accomplishes the bulk of the analysis for this publication, which includes fitting models of biomass from various combinations of predictor variables and fixed and mixed effects, as well as retrieving model coefficients and fitness metrics used in model evaluation. Rather than leaving all of that in the black box of the function, here we break down the internal steps of 'explore_allom_models()' to provide more insight.
+The above use of the 'explore_allom_models()' accomplishes the bulk of the analysis, which includes fitting models of biomass from various combinations of predictor variables and fixed and mixed effects, as well as retrieving model coefficients and fitness metrics used in model evaluation. Rather than leaving all of that in the black box of the function, here we break down the internal steps of 'explore_allom_models()' to provide more insight.
 
-The first step is to check to make sure inputs are valid and then to run two important transformations on the data. The first is a log transformation of all response and predictor variables, which is very common in allometry (see [Gingerich (2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). The second is a scaling that is important for mixed-effects model performance and interpretability [Harrison et al. (2018)](https://doi.org/10.7717/peerj.4794). In this case, each value is reduced by the variable's mean and than divided by it's standard deviation. This creates proportionally equivalent values of all variables that are on the same scale, reducing bias from predictors whose values are orders of magnitude in difference. This is primarily done to more easily compare performance across models, but it is important to note that transformations fundamentally change model coefficients and their interpretation of the original data. For this reason, coefficients for this publication are reported on models from the non-scaled, but still log transformed data, while performance metric comparisons are done on models from scaled and log transformed variables. Thus, a slope and intercept term reported from this workflow will represent the log of variable X and the log of variable Y, and predictions will represent the log of variable Y (biomass, in our case). In a later section we demonstrate how to back-transform predictions to provide a linear (non-log) representation of biomass.     
+The first step is to check to make sure inputs are valid and then to run two important transformations on the data. The first is a log transformation of all response and predictor variables, which is very common in allometry (see [Gingerich (2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). The second is a scaling that is important for mixed-effects model performance and interpretability [Harrison et al. (2018)](https://doi.org/10.7717/peerj.4794). In this case, each value is reduced by the variable's mean and than divided by it's standard deviation. This creates proportionally equivalent values of all variables that are on the same scale, reducing bias from predictors whose values are orders of magnitude in difference. This is primarily done to more easily compare performance across models, but it is important to note that transformations fundamentally change model coefficients and their interpretation of the original data. For this reason, coefficients should generally be reported on models from the non-scaled, but still log transformed data, while performance metric comparisons are done on models from scaled and log transformed variables. Thus, a slope and intercept term reported from this workflow will represent the log of variable X and the log of variable Y, and predictions will represent the log of variable Y (biomass, in our case). In a later section we demonstrate how to back-transform predictions to provide a linear (non-log) representation of biomass.     
 
 ```{r explore_allom_models1, eval=FALSE}
   ##  check inputs
@@ -99,7 +105,7 @@ The first step is to check to make sure inputs are valid and then to run two imp
   varGroup=model=0
 ```
 
-Next, we begin to loop through each of the predictor variables and build and fit models with those variables. Here, we use k to denote the number of predictor variables in the equation. A k of 1 is a simple regression and a k greater than one is multiple regression with more than one predictor. Two important exclusions are happening below. The first is that the 'WoodDensity' variable is not included in simple regression because its values are generalized for each species and are not location specific, thus it does not meaningfully influence biomass for individual trees. Second, is that composite variables are not included in multiple regression because they are already a combination of multiple variables and it simply doesnt make sense in our case to include the influence of a variable twice in the same model.   
+Next, we begin to loop through each of the predictor variables and build and fit models with different combinations of those variables. Here, we use k to denote the number of predictor variables in the equation. A k of 1 is a simple regression and a k greater than one is multiple regression with more than one predictor. Two important exclusions are happening below. The first is that the 'WoodDensity' variable is not included in simple regression because its values are generalized for each species and are not location specific, thus it does not meaningfully influence biomass for individual trees. Second, is that composite variables are not included in multiple regression because they are already a combination of multiple variables and it simply doesnt make sense in our case to include the influence of a variable twice in the same model.   
 ```{r explore_allom_models2, eval=FALSE}
 for (k in 1:length(predictorVars)) {
     if (k==1){
@@ -113,11 +119,23 @@ for (k in 1:length(predictorVars)) {
     }
 ```
 
-The 'combos' variable created in the above portion of the script is a set of variable combinations that will be used in the model. For this publication, variable importance was not evaluated, thus we only consider one permutation of a given combination of variables. However, we do perform various combinations of fixed and mixed effects for each permutation. 
+The 'combos' variable created in the above portion of the script is a set of variable combinations that will be used in the model. They are sent along to the next step, which further expands upon the 'combos' by computing all possible combinations of those variables. This is important for some analyses, because evaluating variable importance depends upon the order in which a variable is present within a multiple regression model. As an example, here is the result of combining all of the predictor variables and then permutating their combinations. In the below print out, each row is a set of predictors that will be used in a model. There are 24 different models that could be generated from this set of 4 variables. 
 
-Next, each predictor set is used in both a fixed effects model as well as various mixed effects models. Running the below script produces one fixed effects model for biomass from the combination of predictor variables. This is repeated for each set of predictors and each model is added to a list of all the models, with the name reflecting the 'family' of the model (basically, which set of predictors was used) as well as the level of fixed or mixed effects. These names are important for identifying and evaluating model families in post-hoc analyses. 
+```{r combo-vars}
+combos <- combn(predictorvars[!grepl("Comp",predictorvars)], 4, simplify = FALSE)
+for (predss in combos) {
+      ### establish all potential combinations of the current predictor set (change the order of predictors).
+      perms <- gtools::permutations(length(predss),length(predss),predss)
+      if (nrow(perms)==0){perms <- matrix(1,nrow = 1,ncol=1)}
+}
+print(perms)
+```
+
+Next, each of the permutations in 'perms' (each row of the above table) is used in both a fixed effects model as well as various mixed effects models. Running the below script produces one fixed effects model for biomass from the unique combination of predictor variables in perms[p,] (the pth row of a table like the one above). This is repeated for each unique combination and each model is added to a list of all the models, with the name reflecting the 'family' of the model (basically, which set of predictors was used) as well as the level of fixed or mixed effects. These names are important for identifying and evaluating model families in post-hoc analyses. 
 ```{r fixed-mod,eval=FALSE}
-preds <- combos
+###  unseen in this script is that p is one row of the above printed table, basically one set of predictor variables. 
+###  The function loops through each of the rows to create different models.
+preds <- perms[p,]
 ##  get the log-transformed version of the variable
 log_preds <- paste0("log", preds)
 ###  remove missing values
@@ -589,73 +607,3 @@ ggplot(random_effects %>% mutate(term=if_else(term=='(Intercept)',"Intercept","S
   xlab("Conditional Mode")+ylab("Group")+
   theme_bw()
 ```
-
-<!-- ```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE} -->
-<!-- predsMM <-mods$predsMM -->
-<!-- predsF <-mods$predsF -->
-<!-- ####  variation in models at each site? -->
-<!-- gg_preds1 <- predsMM %>% -->
-<!--   #select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
-<!--   left_join(predsF |>select(ID,contains("preds_")),by=join_by(ID))%>% -->
-<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
-<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
-<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
-<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
-<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>% -->
-<!--   filter(!grepl("Site",RandomVars))%>% -->
-<!--   ggplot(aes(x=logDBH.cm,y=logAGB.kg,col=Species))+ -->
-<!--   geom_point(alpha=1)+ -->
-<!--   geom_line(aes(y=value,lty=RandomEffects))+ -->
-<!--   #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+ -->
-<!--   facet_grid(Species~Site)+ -->
-<!--   #scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+ -->
-<!--   scale_linetype_manual(values=c(1,2,4))+ -->
-<!--   theme_bw() -->
-<!-- gg_preds2 <- predsMM %>% -->
-<!--   #select(Dataset:logWoodDensity,contains("mod1_")) %>% -->
-<!--   cbind(predsF %>% select(contains("preds_")))%>%#rename(mod1_none_none = mod1_)) %>% -->
-<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
-<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
-<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
-<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
-<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects)) %>% -->
-<!--   ggplot(aes(x=logDBH.cm,y=logAGB.kg,shape=Species))+ -->
-<!--   #geom_point(col="darkgrey")+ -->
-<!--   #geom_smooth(method="lm",formula=y~x,aes(lty=RandomEffects),se=FALSE)+ -->
-<!--   facet_wrap(~Species)+ -->
-<!--   scale_color_manual(values=c("black",RColorBrewer::brewer.pal(3,"Set1")))+ -->
-<!--   scale_linetype_manual(values=c(1,2,4))+ -->
-<!--   geom_line(aes(y=value,lty=RandomEffects,col=RandomVars))+ -->
-<!--   theme_bw() -->
-
-<!-- #####   Residual density plot -->
-<!-- predsMM %>% -->
-<!--   select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
-<!--   cbind(predsF %>% select(contains("preds_")))%>% -->
-<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
-<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
-<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
-<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
-<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects), -->
-<!--          Residuals = logAGB.kg-value) %>% -->
-<!--   ggplot(aes(x=Residuals,col=RandomVars))+ -->
-<!--   geom_density()+ -->
-<!--   facet_wrap(~RandomEffects)+ -->
-<!--   theme_bw() -->
-
-<!-- ###  Residuals versus observations -->
-<!-- predsMM %>% -->
-<!--   select(Dataset:logWoodDensity.g.cm3,contains("preds_")) %>% -->
-<!--   cbind(predsF %>% select(contains("preds_")))%>% -->
-<!--   tidyr::pivot_longer(cols=contains("preds_"),names_prefix = "preds_") %>% -->
-<!--   tidyr::separate(name,sep="(_)",remove=FALSE, into=c("RandomEffects","RandomVars"))%>% -->
-<!--   mutate(RandomVars = if_else(is.na(RandomVars), "none",RandomVars), -->
-<!--          RandomVars = factor(RandomVars,levels=c("Species&Site","Species","Site","none")), -->
-<!--          RandomEffects = gsub("^.*?\\.","",RandomEffects), -->
-<!--          Residuals = logAGB.kg-value) %>% -->
-<!--   ggplot(aes(x=value,y=Residuals,col=RandomEffects))+ -->
-<!--   geom_point()+ -->
-<!--   facet_wrap(~RandomVars)+ -->
-<!--   theme_bw() -->
-<!-- ``` -->
-
