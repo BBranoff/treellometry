@@ -2,7 +2,7 @@ Local vs global allometric equations: Evaluating multiple variables in
 mixed effects models for biomass estimation using a global mangrove data
 compilation
 ================
-Benjamin Branoff & Charles Price,
+Benjamin Branoff & Charles Price.
 April 8, 2026
 
 # Coming Soon
@@ -265,7 +265,7 @@ set of predictor variables.
     ## ℹ Please use `if_any()` or `if_all()` instead.
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
 
-    ## R RNG seed set to 155432
+    ## R RNG seed set to 430629
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -603,7 +603,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpoHVPeO\file9e8074511b2b.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpAHtQpx\fileb52458bb449d.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
