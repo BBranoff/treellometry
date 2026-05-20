@@ -2,15 +2,15 @@ Local vs global allometric equations: Evaluating multiple variables in
 mixed effects models for biomass estimation using a global mangrove data
 compilation
 ================
-Benjamin Branoff, Charles Price
+Benjamin Branoff & Charles Price,
 April 8, 2026
 
 # Coming Soon
 
-This is the future site of the repository for the journal article: Price
-et al. (2026) Local vs global allometric equations: Evaluating multiple
-variables in mixed effects models for biomass estimation using a global
-mangrove data compilation.
+This is the repository for the journal article: Price et al. (2026)
+Local vs global allometric equations: Evaluating multiple variables in
+mixed effects models for biomass estimation using a global mangrove data
+compilation.
 
 # Abstract
 
@@ -156,18 +156,17 @@ provide a linear (non-log) representation of biomass.
 ```
 
 Next, we begin to loop through each of the predictor variables and build
-and fit models with different combinations of those variables. Here, we
-use k to denote the number of predictor variables in the equation. A k
-of 1 is a simple regression and a k greater than one is multiple
-regression with more than one predictor. Two important exclusions are
-happening below. The first is that the ‘WoodDensity’ variable is not
-included in simple regression because its values are generalized for
-each species and are not location specific, thus it does not
-meaningfully influence biomass for individual trees. Second, is that
-composite variables are not included in multiple regression because they
-are already a combination of multiple variables and it simply doesnt
-make sense in our case to include the influence of a variable twice in
-the same model.
+and fit models with those variables. Here, we use k to denote the number
+of predictor variables in the equation. A k of 1 is a simple regression
+and a k greater than one is multiple regression with more than one
+predictor. Two important exclusions are happening below. The first is
+that the ‘WoodDensity’ variable is not included in simple regression
+because its values are generalized for each species and are not location
+specific, thus it does not meaningfully influence biomass for individual
+trees. Second, is that composite variables are not included in multiple
+regression because they are already a combination of multiple variables
+and it simply doesnt make sense in our case to include the influence of
+a variable twice in the same model.
 
 ``` r
 for (k in 1:length(predictorVars)) {
@@ -183,73 +182,23 @@ for (k in 1:length(predictorVars)) {
 ```
 
 The ‘combos’ variable created in the above portion of the script is a
-set of variable combinations that will be used in the model. They are
-sent along to the next step, which further expands upon the ‘combos’ by
-computing all possible combinations of those variables. This is
-important for some analyses, because evaluating variable importance
-depends upon the order in which a variable is present within a multiple
-regression model. As an example, here is the result of combining all of
-the predictor variables and then permutating their combinations. In the
-below print out, each row is a set of predictors that will be used in a
-model. There are 24 different models that could be generated from this
-set of 4 variables.
+set of variable combinations that will be used in the model. For this
+publication, variable importance was not evaluated, thus we only
+consider one permutation of a given combination of variables. However,
+we do perform various combinations of fixed and mixed effects for each
+permutation.
+
+Next, each predictor set is used in both a fixed effects model as well
+as various mixed effects models. Running the below script produces one
+fixed effects model for biomass from the combination of predictor
+variables. This is repeated for each set of predictors and each model is
+added to a list of all the models, with the name reflecting the ‘family’
+of the model (basically, which set of predictors was used) as well as
+the level of fixed or mixed effects. These names are important for
+identifying and evaluating model families in post-hoc analyses.
 
 ``` r
-combos <- combn(predictorvars[!grepl("Comp",predictorvars)], 4, simplify = FALSE)
-for (predss in combos) {
-      ### establish all potential combinations of the current predictor set (change the order of predictors).
-      perms <- gtools::permutations(length(predss),length(predss),predss)
-      if (nrow(perms)==0){perms <- matrix(1,nrow = 1,ncol=1)}
-}
-print(perms)
-```
-
-    ##       [,1]                [,2]                [,3]                [,4]               
-    ##  [1,] "CanopyDiameter.m"  "DBH.cm"            "Height.m"          "WoodDensity.g.cm3"
-    ##  [2,] "CanopyDiameter.m"  "DBH.cm"            "WoodDensity.g.cm3" "Height.m"         
-    ##  [3,] "CanopyDiameter.m"  "Height.m"          "DBH.cm"            "WoodDensity.g.cm3"
-    ##  [4,] "CanopyDiameter.m"  "Height.m"          "WoodDensity.g.cm3" "DBH.cm"           
-    ##  [5,] "CanopyDiameter.m"  "WoodDensity.g.cm3" "DBH.cm"            "Height.m"         
-    ##  [6,] "CanopyDiameter.m"  "WoodDensity.g.cm3" "Height.m"          "DBH.cm"           
-    ##  [7,] "DBH.cm"            "CanopyDiameter.m"  "Height.m"          "WoodDensity.g.cm3"
-    ##  [8,] "DBH.cm"            "CanopyDiameter.m"  "WoodDensity.g.cm3" "Height.m"         
-    ##  [9,] "DBH.cm"            "Height.m"          "CanopyDiameter.m"  "WoodDensity.g.cm3"
-    ## [10,] "DBH.cm"            "Height.m"          "WoodDensity.g.cm3" "CanopyDiameter.m" 
-    ## [11,] "DBH.cm"            "WoodDensity.g.cm3" "CanopyDiameter.m"  "Height.m"         
-    ## [12,] "DBH.cm"            "WoodDensity.g.cm3" "Height.m"          "CanopyDiameter.m" 
-    ## [13,] "Height.m"          "CanopyDiameter.m"  "DBH.cm"            "WoodDensity.g.cm3"
-    ## [14,] "Height.m"          "CanopyDiameter.m"  "WoodDensity.g.cm3" "DBH.cm"           
-    ## [15,] "Height.m"          "DBH.cm"            "CanopyDiameter.m"  "WoodDensity.g.cm3"
-    ## [16,] "Height.m"          "DBH.cm"            "WoodDensity.g.cm3" "CanopyDiameter.m" 
-    ## [17,] "Height.m"          "WoodDensity.g.cm3" "CanopyDiameter.m"  "DBH.cm"           
-    ## [18,] "Height.m"          "WoodDensity.g.cm3" "DBH.cm"            "CanopyDiameter.m" 
-    ## [19,] "WoodDensity.g.cm3" "CanopyDiameter.m"  "DBH.cm"            "Height.m"         
-    ## [20,] "WoodDensity.g.cm3" "CanopyDiameter.m"  "Height.m"          "DBH.cm"           
-    ## [21,] "WoodDensity.g.cm3" "DBH.cm"            "CanopyDiameter.m"  "Height.m"         
-    ## [22,] "WoodDensity.g.cm3" "DBH.cm"            "Height.m"          "CanopyDiameter.m" 
-    ## [23,] "WoodDensity.g.cm3" "Height.m"          "CanopyDiameter.m"  "DBH.cm"           
-    ## [24,] "WoodDensity.g.cm3" "Height.m"          "DBH.cm"            "CanopyDiameter.m"
-
-For this publication, variable importance was not evaluated, thus we
-only consider one permutation of a given combination of variables.
-However, we do perform various combinations of fixed and mixed effects
-for each permutation.
-
-Next, each of the permutations in ‘perms’ (each row of the above table)
-is used in both a fixed effects model as well as various mixed effects
-models. Running the below script produces one fixed effects model for
-biomass from the unique combination of predictor variables in
-perms\[p,\] (the pth row of a table like the one above). This is
-repeated for each unique combination and each model is added to a list
-of all the models, with the name reflecting the ‘family’ of the model
-(basically, which set of predictors was used) as well as the level of
-fixed or mixed effects. These names are important for identifying and
-evaluating model families in post-hoc analyses.
-
-``` r
-###  unseen in this script is that p is one row of the above printed table, basically one set of predictor variables. 
-###  The function loops through each of the rows to create different models.
-preds <- perms[p,]
+preds <- combos
 ##  get the log-transformed version of the variable
 log_preds <- paste0("log", preds)
 ###  remove missing values
@@ -316,7 +265,7 @@ set of predictor variables.
     ## ℹ Please use `if_any()` or `if_all()` instead.
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
 
-    ## R RNG seed set to 518238
+    ## R RNG seed set to 155432
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -654,7 +603,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\Rtmpq8ce5E\file6b10300f23eb.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpoHVPeO\file9e8074511b2b.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
