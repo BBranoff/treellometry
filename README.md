@@ -1,6 +1,8 @@
-ecoinfromatics publication placeholder
+Local vs global allometric equations: Evaluating multiple variables in
+mixed effects models for biomass estimation using a global mangrove data
+compilation
 ================
-Ben Branoff
+Benjamin Branoff, Charles Price
 April 8, 2026
 
 # Coming Soon
@@ -34,7 +36,7 @@ investigators to prioritize data collection efforts.
 
 # Methods
 
-The below methods can be done manually, by downloading the referenced
+The methods below can be done manually, by downloading the referenced
 data and functions from this repository and sourcing them in R, or they
 can be done by installing the package in R.
 
@@ -49,33 +51,35 @@ library(dplyr)
 
 With the library successfully loaded, the following methods will
 demonstrate the workflow documented in the above publication. The first
-steps are to create the composite variables. These are commonly used in
-allometric modelling because two allometric covariables are likely to be
-correlated, violating the assumptions of multivariate models. Creating a
-composite variable eliminates this issue, although it does introduce
-interpretation considerations. Here, we also set the response variable,
-which in our case is always aboveground biomass, as well as the various
-predictor variables. We also establish the grouping variables, these
-will be used to model random effects, which aims to investigate a
-central premise of this publication, that species and location are
-significant and substantial in influencing biomass predictions from
-allometric measurements. In short, mixed effects models will ‘partition’
-the variance in biomass associated with individual species and locations
-and then attempt to model the remaining variance based on the allometric
+steps are to create the composite variables (product of variables).
+These are meant to roughly represent tree form (volume) and are commonly
+used in allometric modelling because two allometric covariables are
+likely to be correlated, which destabilizes estimates in multivariate
+models. Creating a composite variable eliminates this issue, although it
+does introduce interpretation considerations, as the product of
+variables isn’t always directly relatable to tree form. Here, we also
+set the response variable, which in our case is always aboveground
+biomass, as well as the various predictor variables. We also establish
+the grouping variables, species and location. These will be used to
+model random effects, which aims to investigate a central premise of
+this publication, that species and location are significant and
+substantial in influencing biomass predictions from allometric
+measurements. In short, mixed effects models will ‘partition’ the
+variance in biomass associated with individual species and locations and
+then attempt to model the remaining variance based on the allometric
 predictor variables. This is very useful in determining how much of the
 biomass is species or location specific, and how much depends primarily
 on the allometric measurements. If a significant and substantial portion
 of the variance in biomass can be attributed to these grouping
-variables, that justifies the harvest of local trees in order to
-determine location and species specific allometric models. On the other
-hand, if the mixed effects models determine that an “insubstantial”
-portion of the variance is due to these grouping variables, harvesting
-local trees is probably not warranted and the use of ‘global’ models
-that apply to all species and all locations is ‘good enough’.
-Ultimately, that decision lies with local managers and scientists, but
-here we provide the statistical information necessary to make that
-informed decision. For a more detailed outline of mixed-effects
-modelling in ecology, see [Harrison et
+variables, that may justify the harvest of local trees to determine
+location and species specific allometric models. On the other hand, if
+the mixed effects models determine that an “insubstantial” portion of
+the variance is due to these grouping variables, harvesting local trees
+is probably not warranted and the use of ‘global’ models that apply to
+all species and all locations is ‘good enough’. Ultimately, that
+decision lies with local managers and scientists, but here we outline a
+statistical workflow to help make that informed decision. For a more
+detailed outline of mixed-effects modelling in ecology, see [Harrison et
 al. (2018)](https://doi.org/10.7717/peerj.4794).
 
 ``` r
@@ -108,16 +112,28 @@ black box of the function, here we break down the internal steps of
 
 The first step is to check to make sure inputs are valid and then to run
 two important transformations on the data. The first is a log
-transformation, which is very common in allometry (see [Gingerich
+transformation of all response and predictor variables, which is very
+common in allometry (see [Gingerich
 (2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and
 Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). The second
 is a scaling that is important for mixed-effects model performance and
 interpretability [Harrison et
-al. (2018)](https://doi.org/10.7717/peerj.4794). It is important to note
-here, however, that transformations fundamentally change model
+al. (2018)](https://doi.org/10.7717/peerj.4794). In this case, each
+value is reduced by the variable’s mean and than divided by it’s
+standard deviation. This creates proportionally equivalent values of all
+variables that are on the same scale, reducing bias from predictors
+whose values are orders of magnitude in difference. This is primarily
+done to more easily compare performance across models, but it is
+important to note that transformations fundamentally change model
 coefficients and their interpretation of the original data. For this
 reason, coefficients for this publication are reported on models from
-the non-scaled data.
+the non-scaled, but still log transformed data, while performance metric
+comparisons are done on models from scaled and log transformed
+variables. Thus, a slope and intercept term reported from this workflow
+will represent the log of variable X and the log of variable Y, and
+predictions will represent the log of variable Y (biomass, in our case).
+In a later section we demonstrate how to back-transform predictions to
+provide a linear (non-log) representation of biomass.
 
 ``` r
   ##  check inputs
@@ -146,8 +162,8 @@ of 1 is a simple regression and a k greater than one is multiple
 regression with more than one predictor. Two important exclusions are
 happening below. The first is that the ‘WoodDensity’ variable is not
 included in simple regression because its values are generalized for
-each species and are not location specific, thus it doesnt make sense to
-include a random effects model for this variable. Second, is that
+each species and are not location specific, thus it does not
+meaningfully influence biomass for individual trees. Second, is that
 composite variables are not included in multiple regression because they
 are already a combination of multiple variables and it simply doesnt
 make sense in our case to include the influence of a variable twice in
@@ -170,12 +186,13 @@ The ‘combos’ variable created in the above portion of the script is a
 set of variable combinations that will be used in the model. They are
 sent along to the next step, which further expands upon the ‘combos’ by
 computing all possible combinations of those variables. This is
-important because evaluating variable importance depends upon the order
-in which a variable is present within a multiple regression model. As an
-example, here is the result of combining all of the predictor variables
-and then permutating their combinations. In the below print out, each
-row is a set of predictors that will be used in a model. There are 24
-different models that could be generated from this set of 4 variables.
+important for some analyses, because evaluating variable importance
+depends upon the order in which a variable is present within a multiple
+regression model. As an example, here is the result of combining all of
+the predictor variables and then permutating their combinations. In the
+below print out, each row is a set of predictors that will be used in a
+model. There are 24 different models that could be generated from this
+set of 4 variables.
 
 ``` r
 combos <- combn(predictorvars[!grepl("Comp",predictorvars)], 4, simplify = FALSE)
@@ -212,6 +229,11 @@ print(perms)
     ## [22,] "WoodDensity.g.cm3" "DBH.cm"            "Height.m"          "CanopyDiameter.m" 
     ## [23,] "WoodDensity.g.cm3" "Height.m"          "CanopyDiameter.m"  "DBH.cm"           
     ## [24,] "WoodDensity.g.cm3" "Height.m"          "DBH.cm"            "CanopyDiameter.m"
+
+For this publication, variable importance was not evaluated, thus we
+only consider one permutation of a given combination of variables.
+However, we do perform various combinations of fixed and mixed effects
+for each permutation.
 
 Next, each of the permutations in ‘perms’ (each row of the above table)
 is used in both a fixed effects model as well as various mixed effects
@@ -294,12 +316,12 @@ set of predictor variables.
     ## ℹ Please use `if_any()` or `if_all()` instead.
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
 
-    ## R RNG seed set to 393226
+    ## R RNG seed set to 518238
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
     ##                 <dbl>            <dbl>            <dbl>          <dbl>          <dbl>
-    ## 1                1.90             1.85            0.618           5.05           5.05
+    ## 1               -1.57             1.74            0.566           5.05           5.05
 
 Next are the more complicated mixed effects models. For every fixed
 effects model there are six mixed effects models, three for random
@@ -490,9 +512,9 @@ the mixed effects models).
     ## # A tibble: 3 × 19
     ##   VarGroup MixedEffects Model            NumPredictors `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed `(Intercept)_MixedInt` slope.var1_MixedInt slope.var2_MixedInt VIF.var1_MixedInt VIF.var2_MixedInt `(Intercept)_MixedIntSlope` slope.var1_MixedIntSlope slope.var2_MixedIntSlope VIF.var1_MixedIntSlope VIF.var2_MixedIntSlope
     ##      <dbl> <chr>        <chr>                    <dbl>               <dbl>            <dbl>            <dbl>          <dbl>          <dbl>                  <dbl>               <dbl>               <dbl>             <dbl>             <dbl>                       <dbl>                    <dbl>                    <dbl>                  <dbl>                  <dbl>
-    ## 1        6 Species&Site Height.m, DBH.cm             2                1.90             1.85            0.618           5.05           5.05                   1.79                1.87               0.720              3.32              3.32                        1.92                     1.91                    0.593                   1.12                   1.12
-    ## 2        6 Species&Site Height.m, DBH.cm             2                1.90             1.85            0.618           5.05           5.05                   1.84                1.86               0.651              4.70              4.70                        1.84                     1.85                    0.686                   1.32                   1.32
-    ## 3        6 Species&Site Height.m, DBH.cm             2                1.90             1.85            0.618           5.05           5.05                   1.73                1.80               0.837              3.11              3.11                        1.79                     1.87                    0.699                   1.06                   1.06
+    ## 1        6 Species&Site Height.m, DBH.cm             2               -1.57             1.74            0.566           5.05           5.05                 -1.02                 1.76               0.582              3.32              3.32                      -0.947                     1.79                    0.479                   1.12                   1.12
+    ## 2        6 Species&Site Height.m, DBH.cm             2               -1.57             1.74            0.566           5.05           5.05                 -0.955                1.75               0.526              4.70              4.70                      -0.943                     1.74                    0.554                   1.32                   1.32
+    ## 3        6 Species&Site Height.m, DBH.cm             2               -1.57             1.74            0.566           5.05           5.05                 -0.980                1.70               0.676              3.11              3.11                      -1.03                      1.76                    0.564                   1.06                   1.06
 
 We have now collected all relevant models, with varying combinations of
 predictor variables and mixed effects. The ‘mods’ object contains the
@@ -508,10 +530,10 @@ performance.
 ``` r
 ##  take the results and round the values for aesthetics 
 performance <- mods_scaled$results%>%
-  mutate(across(6:26,~round(.x,5)))
+  mutate(across(6:30,~round(.x,5)))
 ##  pivot the table and categorize metrics and models
 performance_long <- performance %>%
-  tidyr::pivot_longer(Rsq_Fixed:ICC_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) %>%
+  tidyr::pivot_longer(Rsq_Fixed:ICC2_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) %>%
   mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
          ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
   distinct(across(1:7),.keep_all = TRUE)
@@ -527,28 +549,30 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ###  for each metric, rank the values from each model.
   group_by(Metric)%>%
   ###  first across all models 
-  ###  If R-squared, we want the highest value but all other values are optimized at the minimum
-  mutate(globalrank=if_else(Metric %in% c("Rsq"),rank(-value),rank(value)))%>%
+  ###  If R-squared or ICC, we want the highest value but all other values are optimized at the minimum
+  mutate(globalrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
   ungroup()%>%
   group_by(Metric,VarGroup)%>%
   ###  then the same within model "families"
-  mutate(familyrank=if_else(Metric %in% c("Rsq"),rank(-value),rank(value)))%>%
+  mutate(familyrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
   ungroup()%>%
   ##  now pivot back to wider with the rankings
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank")) %>%
   rowwise()%>%
-  ##  compute the mean of the ranks for each model family, this we calle the 'global rank'
+  ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE,globalrank_Sig)),
-         globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean))%>%
+         globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE,familyrank_Sig)),
+         familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
   ###  now create a master global rank based on the means
-  mutate(globalrank=rank(globalranks_mean)) %>%
+  mutate(masterrank_global=rank(globalranks_mean)) %>%
   group_by(VarGroup)%>%
   ##  same for the family ranks
-  mutate(familyrank=rank(globalranks_mean))%>%
+  mutate(masterrank_family=rank(familyranks_mean))%>%
   ungroup()%>%
-  relocate(globalrank,familyrank,.after=Effects)%>%
-  arrange(globalrank)
+  relocate(masterrank_global,masterrank_family,.after=Effects)%>%
+  arrange(masterrank_global)
 ##  filter the ranked models. Here, we take the best model within a 'family', which is a group of models sharing the same predictors. 
 performance_rank_filtered <- performance_ranked %>%
   tidyr::separate(Model,sep=",",into=c("Var1","Var2","Var3","Var4"),remove=FALSE)%>%
@@ -556,12 +580,13 @@ performance_rank_filtered <- performance_ranked %>%
          across(c(Var1:Var4),~if_else(.x=="DBH",1,if_else(.x=="Height",2,if_else(.x=="CanopyDiameter",3,4)))))%>%
   rowwise()%>%
   filter(!is.unsorted(c(Var1,Var2,Var3,Var4),na.rm=TRUE))%>%
-  arrange(globalrank) %>%
+  arrange(masterrank_global) %>%
   ###  Here is where we keep the highest ranking model for each family
+  ###  this would be important if multiple variable permutations are computed for each family
   distinct(VarGroup,MixedEffects,Effects,.keep_all = TRUE)%>%
   relocate(ModelN) %>%
   select(-c(Var1:Var4))
-##  attach the VIF values from the coefficients table, this time sourced from the unscaled data
+##  attach the VIF values from the coefficients table, this time sourced from the unscaled data models
 coef <- mods$coefs |>
   mutate(across(6:32,~round(.x,5)))|>
   rowwise()|>
@@ -583,7 +608,7 @@ coefs_filtered <- coef_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance_rank_filtered$ModelN,performance_rank_filtered$MixedEffects,performance_rank_filtered$Effects)) %>%  relocate(ModelN)
 coefs_filtered <- coefs_filtered[match(paste0(performance_rank_filtered$ModelN,performance_rank_filtered$MixedEffects,performance_rank_filtered$Effects),
                                        paste0(coefs_filtered$ModelN,coefs_filtered$MixedEffects,coefs_filtered$Effects)), ]
-performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,globalrank,value_Rsq:value_ICC) %>%
+performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_ICC) %>%
   left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 ```
 
@@ -592,17 +617,18 @@ repository. Although they all contain the same identifying information
 that allows for comparisons across tables (coefficients versus
 performance metrics), the filenames of the tables indicate that while
 the performance metrics come from models in which variables were scaled
-prior to fitting, the coeficient tables do not. This is important to
+prior to fitting, the coefficient tables do not. This is important to
 note for interpretation and for replication.
 
 We now have a dataset (performance_rank_filtered) with the top
-performing model from each family of predictor variables, ranked also by
-the performance against each other. Remember, however, that these
-rankings are somewhat arbitrary and based primarily upon our ability to
-logistically sort a large number of models. Different rankings could be
-applied for different objectives (prioritize RMSE, for example). Still,
-this gives us a general idea of which models are performing ‘best’. We
-are left with around 100 models, which is still a considerable number.
+performing model from each family of predictor variables, ranked by
+their performance metrics. Remember, however, that these rankings are
+somewhat arbitrary and based primarily upon our ability to logistically
+sort a large number of models. Different rankings could be applied for
+different objectives (prioritize RMSE, for example). Still, this gives
+us a general idea of which models are performing ‘better’ than others.
+We are left with around 100 models, which is still a considerable
+number.
 
 We now want to test the assumptions of each model. Again, we are looking
 for a reasonable way to evaluate a large number of models. Using the
@@ -610,10 +636,10 @@ convenient ‘check_model()’ function from the performance package, we can
 produce excellent visualizations for pertinent assumptions. These are
 stored in the ‘Assumptions’ folder of the repository. Upon examining the
 graphics, it seems many of the top models do a good to decent job of
-meeting the primary assumptions. Again, because these assumptions have
-varying consequences depending on the objectives of the model
-(predictions versus comparisons) it is the user’s responsibility to
-scrutinize these assumption tests according to their objectives. The
+meeting the primary regression model assumptions. Again, because these
+assumptions have varying consequences depending on the objectives of the
+model (predictions versus comparisons) it is the user’s responsibility
+to scrutinize these assumption tests according to their objectives. The
 results of the below are included the “Assumptions” folder and below is
 one example from the ‘top’ model.
 
@@ -628,7 +654,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpCeLw6I\file7518839ea2.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\Rtmpq8ce5E\file6b10300f23eb.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
@@ -653,8 +679,12 @@ models is shown. In the plot, the most complex model, with random slopes
 and intercepts on species and site, seems to perform ‘better’. But this
 is debatable depending on which metrics are prioritized. If BIC (which
 penalized complexity) is prioritized, a simpler model with only random
-effects on site, may be optimal. Either way, its clear that these mixed
-effects models out-perform the fixed effects version.
+effects on site, may be optimal. Either way, its clear that in general,
+for the same set of variable, mixed effects models out-perform the fixed
+effects versions. This is the primary intention of mixed-effects
+modelling when hierarchical data is suspected. By partitioning the
+variance into groups and fitting coefficients separately, mixed-effects
+models are better able to capture the global and group specific trends.
 
 ``` r
 ####  model peformance charts

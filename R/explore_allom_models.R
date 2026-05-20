@@ -1,8 +1,8 @@
 #' @importFrom performance icc
-#' @importFrom lme4 lmer fixef
+#' @importFrom lme4 lmer fixef isSingular VarCorr
 #' @importFrom tibble as_tibble_row tibble
 #' @importFrom dplyr mutate filter across left_join select n bind_cols join_by bind_rows cur_group_id last_col relocate group_by ungroup
-explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=TRUE,varorder=FALSE) {
+explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=FALSE,varorder=FALSE) {
   if (responseVar %in% predictorVars) stop("Response variable found in predictor variables")
   # Log-transform response and predictors
   dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
@@ -116,7 +116,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
           if (mm==1){ME = paste(groupVars,collapse="&")}else{ME = groupVars[mm-1]}
           ##  Fit mixed model
           ##  create lists to hold coefficients and model metrics
-          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_mixed_std<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC <- VIF_mixed <- list()
+          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_mixed_std<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC<-ICC2 <- VIF_mixed <- sings_mixed <- list()
           for (M in 1:length(MMods)){
             ###  fit the model, if possible given the data
             #ModelME <- ModelME+0.1
@@ -125,6 +125,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             }, error = function(e) NULL)
             ###  if the model ran successfully, get the coefficients and metrics
             if (!is.null(mixed_model)) {
+              ##  check for singularity
+              sings_mixed <- append(sings_mixed,isSingular(mixed_model))
               ###  first the predictions
               predsMM <- predsMM |> left_join(data.frame(ID=data_clean$ID,pred=predict(mixed_model,newdata=data_clean)),by=join_by(ID))
               ####  caret offers more control but is not optimal for me models
@@ -143,8 +145,11 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               coefs_mixed <- append(coefs_mixed,c(fixef(mixed_model,add.dropped=TRUE),VIF_mixed))
               #if (is.na(icc(mixed_model)[1])){browser()}
               ICC <- append(ICC,icc(mixed_model)[1])
+              vars <- as.data.frame(VarCorr(mixed_model));group_var <- sum(vars[vars$grp != "Residual", "vcov"]);resid_var <- vars[vars$grp == "Residual", "vcov"]
+              ICC2 <- append(ICC2,(group_var / (group_var + resid_var)))
             } else {
               ####  if the model could not run, set its metrics and coefficients to NA
+              sings_mixed <- append(sings_mixed,NA)
               predsMM <- cbind(predsMM,rep(NA,nrow(predsMM)))
               R2_mixed <- append(R2_mixed,NA)
               sigs_mixed <- append(sigs_mixed,NA)
@@ -155,6 +160,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed,NA)
               RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed,NA)
               ICC <- append(ICC,NA)
+              ICC2 <- append(ICC2,NA)
               VIF_mixed <- append(VIF_mixed,NA)
               coefs_mixed[[M]] <- setNames(rep(NA, length(log_preds) + 1),
                                            c("(Intercept)", log_preds))
@@ -173,8 +179,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             RMSE.CVmean_Fixed = RMSE_CVmean_fixed,
             RMSE.CVsd_Fixed = RMSE_CVsd_fixed,
           ) |> mutate(MixedEffects=ME) |>
-            bind_cols(as_tibble_row(setNames(as.list(c(R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_mixed_std,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC)),
-                                             paste0(rep(c("Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.Std_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed"),each=2),
+            bind_cols(as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_mixed_std,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
+                                             paste0(rep(c("Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.Std_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
                                                     c("Int","IntSlope")))))
           coef_row <- tibble(
             VarGroup = varGroup,
