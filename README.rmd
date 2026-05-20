@@ -5,7 +5,7 @@ date: April 8, 2026
 output: github_document
 ---
 
-# Coming Soon
+# Description
 This is the repository for the journal article:
 Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation.
 
@@ -14,7 +14,7 @@ Price et al. (2026) Local vs global allometric equations: Evaluating multiple va
 Accurate estimation of mangrove biomass is key component of the blue carbon economy and allometric equations are a cornerstone of methodological approaches from plot to landscape scales. A perennial question facing investigators is whether global allometric equations can be applied to their biome of interest, or whether local trees need to be harvested to provide accurate estimates. Further, which combinations of tree dimensions provide the most accurate estimates is not always clear. We examined 16 different allometric equations for four tree measures within a global data set for three prominent trans-Atlantic mangroves species. We used mixed effects models with site location and tree species modeled as random effects, and tree DBH, height, canopy diameter and wood density as fixed effects. While the mixed effects model with the greatest number of parameters was the best performing model based on five different statistical measures with a mean error of 1.392 kg, the improvement over simpler models was marginal. Simply measuring the DBH of each tree would only add an additional 380 grams of error per tree compared to the best performing model. These results provide qualified support for the use of global equations and can help subsequent investigators to prioritize data collection efforts.
 
 # Methods
-The methods below can be done manually, by downloading the referenced data and functions from this repository and sourcing them in R, or they can be done by installing the package in R. 
+The methods below can be done manually, by downloading the referenced data and functions from this repository and sourcing them in R, or they can be done by installing the package in R as shown here. 
 
 ```{r false-load-data,results='hide',eval=FALSE,echo=TRUE}
 ##  to install this repository directly, the installation function (remotes) first need to be installed

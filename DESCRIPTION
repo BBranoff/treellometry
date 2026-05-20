@@ -11,6 +11,9 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/BBranoff/treellometry
 BugReports: https://github.com/BBranoff/treellometry/issues
-Depends: 
-    R (>= 3.5)
 RoxygenNote: 7.3.3
+Imports: 
+    dplyr,
+    lme4,
+    performance,
+    tibble
