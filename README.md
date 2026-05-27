@@ -5,7 +5,7 @@ compilation
 Benjamin Branoff & Charles Price.
 April 8, 2026
 
-# Coming Soon
+# Description
 
 This is the repository for the journal article: Price et al. (2026)
 Local vs global allometric equations: Evaluating multiple variables in
@@ -38,7 +38,7 @@ investigators to prioritize data collection efforts.
 
 The methods below can be done manually, by downloading the referenced
 data and functions from this repository and sourcing them in R, or they
-can be done by installing the package in R.
+can be done by installing the package in R as shown here.
 
 ``` r
 ##  to install this repository directly, the installation function (remotes) first need to be installed
@@ -265,7 +265,7 @@ set of predictor variables.
     ## ℹ Please use `if_any()` or `if_all()` instead.
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
 
-    ## R RNG seed set to 430629
+    ## R RNG seed set to 528889
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -479,7 +479,7 @@ performance.
 ``` r
 ##  take the results and round the values for aesthetics 
 performance <- mods_scaled$results%>%
-  mutate(across(6:30,~round(.x,5)))
+  mutate(across(6:35,~round(.x,5)))
 ##  pivot the table and categorize metrics and models
 performance_long <- performance %>%
   tidyr::pivot_longer(Rsq_Fixed:ICC2_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) %>%
@@ -603,7 +603,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpAHtQpx\fileb52458bb449d.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\Rtmp4wzCiM\file3a50477a1d91.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
@@ -768,6 +768,89 @@ ggplot(random_effects %>% mutate(term=if_else(term=='(Intercept)',"Intercept","S
 ```
 
 ![](README_files/figure-gfm/randomeffects-1.png)<!-- -->
+
+``` r
+library(lme4)
+```
+
+``` r
+library(insight)
+### apply the 'get_variance()' funtion to all models and format into a data frame.
+var_list <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(get_variance(modskeep[[x]]))|>tibble::rownames_to_column(var="component")|>mutate(component=paste0(gsub("\\d", "",component),"var",as.numeric(gsub("\\D", "",component))+1),component=gsub("varNA",".var1",component))|>select(-contains("cor."))|>rowwise()|>mutate(var.total=sum(c_across(any_of(c("var.fixed","var.random","var.residual"))),na.rm=TRUE))|>tidyr::pivot_longer(cols=contains("var."))|>mutate(Model=names(modskeep)[x],name=gsub("var.","",name),name=if_else(grepl("slope|intercept",name),paste(component,name,sep="."),if_else(name=="random","total random", name)),component=if_else(!grepl("slope|intercept",name),NA,component))|>distinct(component,name,.keep_all = TRUE)}})
+###  remove the non-mixed effects models
+var_list <- Filter(Negate(is.null), var_list)
+###  combine all model data frames
+var_list <- do.call(rbind,var_list) |>
+  left_join(performance_rank_filtered |> select(ModelName,Model),by=join_by(Model==ModelName))|>
+  mutate(name=factor(name,levels=c("total","fixed","total random","residual","dispersion","distribution","Site.var1.intercept","Site.var1.slope","Site.var2.intercept","Site.var2.slope",
+                                      "Site.var3.intercept","Site.var3.slope","Site.var4.intercept","Site.var4.slope",
+                                      "Species.var1.intercept","Species.var1.slope","Species.var2.intercept","Species.var2.slope",
+                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))
+####  plot
+####  with the fixed variance
+ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
+         mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
+                Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
+                Model.y=gsub("WoodDensity","Wood Density",Model.y),
+                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
+         ungroup()|>
+         group_by(Model.y)|>
+         mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
+         ungroup()|>
+         arrange(mean.resid)|>
+         mutate(Model.y=factor(Model.y,levels=unique(Model.y))), 
+       aes(x = name, y = var.mean, fill = name)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
+  scale_fill_manual(values=c("#A50026","#1B9E77","white",RColorBrewer::brewer.pal(8,"YlOrRd"),RColorBrewer::brewer.pal(9,"BuPu")[2:9]))+
+  facet_wrap(~Model.y) +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
+  guides(fill=guide_legend("Variance Groups"))+
+  labs(
+    title = "Fig. 5 Variance Decomposition - with fixed effects.",
+    x = "Variance Component",
+    y = "Estimated Variance, Percent of Total"
+  ) 
+```
+
+![](README_files/figure-gfm/varpart-1.png)<!-- -->
+
+``` r
+### without the fixed and residual variance
+ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
+         mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
+                Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
+                Model.y=gsub("WoodDensity","Wood Density",Model.y),
+                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
+         ungroup()|>
+         group_by(Model.y)|>
+         mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
+         ungroup()|>
+         arrange(mean.resid)|>
+         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))|>
+         filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
+       aes(x = name, y = var.mean, fill = name)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
+  scale_fill_manual(values=c("#1B9E77",RColorBrewer::brewer.pal(8,"YlOrRd"),RColorBrewer::brewer.pal(9,"BuPu")[2:9]))+
+  facet_wrap(~Model.y) +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
+  #annotate("text",label="Site",x=5,y=10)+
+  #annotate("text",label="Species",x=13,y=10)+
+  #geom_vline(xintercept=c(1.5,9.5),lty=2)+
+  guides(fill=guide_legend("Variance Groups"))+
+  labs(
+    title = "Fig. 6 Variance Decomposition - fixed effects removed.",
+    x = "Variance Component",
+    y = "Estimated Variance , Percent of Total"
+  ) 
+```
+
+![](README_files/figure-gfm/varpart-2.png)<!-- -->
+
+# `{r varpart2, eval=FALSE, echo=FALSE, message=FALSE,warning=FALSE"} # ##  random effects # varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}}) # varcorrs <- do.call(rbind,varcorrs) |> #   left_join(performance_rank_filtered |> select(ModelName,Model),by=join_by(Model==ModelName)) #  # ggplot(varcorrs |> group_by(Model.y,grp) |> summarise(vcov.mean=mean(vcov,na.rm=TRUE),vcov.sd=sd(vcov,na.rm=TRUE),vcov.sem=vcov.sd/sqrt(n()))|> #          mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y), #                 Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y), #                 Model.y=gsub("WoodDensity","Wood Density",Model.y), #                 Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|> #          ##  arrange by residual variance #          ungroup()|> #          group_by(Model.y)|> #          mutate(mean.resid = mean(vcov.mean[grp=="Residual"],na.rm=TRUE))|> #          ungroup()|> #          arrange(mean.resid)|> #          mutate(Model.y=factor(Model.y,levels=unique(Model.y))), #        aes(x = grp, y = vcov.mean, fill = grp))+ #   geom_bar(stat = "identity", position = "dodge") + #   geom_errorbar(aes(ymax=vcov.mean+vcov.sem,ymin=vcov.mean-vcov.sem),width=0.2)+ #   facet_wrap(~Model.y) + #   theme_minimal() + #   theme(axis.text.x=element_blank(),axis.title.x=element_blank())+ #   scale_fill_manual(values=c("#A50026",RColorBrewer::brewer.pal(4,"YlOrRd"),RColorBrewer::brewer.pal(9,"YlGnBu")[5:8]))+ #   guides(fill=guide_legend("Variance Groups"))+ #   labs(title = "Comparison of Variance Components", #        y = "Variance Estimate") #  #  # ###  Fixed effects # coefs_full <- mods_scaled_full$coefs |> #   select(MixedEffects,Model,contains("Rsq"))|> #   tidyr::pivot_longer(cols=contains("Rsq"),names_pattern="(.*)\\.(.*)_(.*)",names_to=c("metric","var","effects"))|> #   filter(!is.na(value))|> #   rowwise()|> #   mutate(Model=as.character(Model), #          var=if_else(!grepl(",",Model),Model, #                      if_else(grepl("1",var),strsplit(Model,",")[[1]][1], #                      if_else(grepl("2",var),strsplit(Model,",")[[1]][2], #                              if_else(grepl("3",var),strsplit(Model,",")[[1]][3], #                                      if_else(grepl("4",var),strsplit(Model,",")[[1]][4],NA))))), #          var = gsub(" ","",var)) # ggplot(coefs_full) + #   geom_boxplot(aes(x=var,y=value))+ #   facet_grid(vars(MixedEffects),vars(effects))+ #   theme_bw()+ #   theme(axis.text.x=element_text(angle=90)) # ggplot(coefs_full) + #   geom_boxplot(aes(x=var,y=value))+ #   theme_bw()+ #   theme(axis.text.x=element_text(angle=90)) #`
 
 <!-- ```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE} -->
 <!-- predsMM <-mods$predsMM -->
