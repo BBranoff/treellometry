@@ -714,8 +714,8 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
 <!--   geom_boxplot(aes(x=var,y=value))+
 <!--   theme_bw()+
 <!--  theme(axis.text.x=element_text(angle=90))
-<!-- ```
-<!-- ```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE} -->
+
+<!-- 
 <!-- predsMM <-mods$predsMM -->
 <!-- predsF <-mods$predsF -->
 <!-- ####  variation in models at each site? -->
