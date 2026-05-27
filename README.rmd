@@ -590,12 +590,8 @@ ggplot(random_effects %>% mutate(term=if_else(term=='(Intercept)',"Intercept","S
   theme_bw()
 ```
 
-```{r varpart-demo,fig.height=10, message=FALSE,warning=FALSE,cap="Fig. 5 Variance decomposition of the models."}
-library(lme4)
 
-```
-
-```{r varpart,fig.height=10, message=FALSE,warning=FALSE,cap="Fig. 5-6 Partitioning the variance in aboveground biomass to fixed effects, random effects, and residuals; means and standard errors for each component within a model family. Total explained variance is at least 90% for all model families, and fixed effects dominate in all models, accounting for the vast majority of variance (Fig 5).  With fixed effects removed (Fig. 6), its easier to compare the random effects, which account for no more than roughly 6% of the variance. This corroborates the view that species and location level information provide relatively little to the variability in allometric relationships."}
+```{r varpart,fig.width=5, message=FALSE,warning=FALSE,cap="Fig. 5-6 Partitioning the variance in aboveground biomass to fixed effects, random effects, and residuals; means and standard errors for each component within a model family. Total explained variance is at least 90% for all model families, and fixed effects dominate in all models, accounting for the vast majority of variance (Fig 5).  With fixed effects removed (Fig. 6), its easier to compare the random effects, which account for no more than roughly 6% of the variance. This corroborates the view that species and location level information provide relatively little to the variability in allometric relationships."}
 library(insight)
 ### apply the 'get_variance()' funtion to all models and format into a data frame.
 var_list <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(get_variance(modskeep[[x]]))|>tibble::rownames_to_column(var="component")|>mutate(component=paste0(gsub("\\d", "",component),"var",as.numeric(gsub("\\D", "",component))+1),component=gsub("varNA",".var1",component))|>select(-contains("cor."))|>rowwise()|>mutate(var.total=sum(c_across(any_of(c("var.fixed","var.random","var.residual"))),na.rm=TRUE))|>tidyr::pivot_longer(cols=contains("var."))|>mutate(Model=names(modskeep)[x],name=gsub("var.","",name),name=if_else(grepl("slope|intercept",name),paste(component,name,sep="."),if_else(name=="random","total random", name)),component=if_else(!grepl("slope|intercept",name),NA,component))|>distinct(component,name,.keep_all = TRUE)}})
@@ -666,59 +662,59 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
   ) 
 ```
 
-# ```{r varpart2, eval=FALSE, echo=FALSE, message=FALSE,warning=FALSE"}
-# ##  random effects
-# varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}})
-# varcorrs <- do.call(rbind,varcorrs) |>
-#   left_join(performance_rank_filtered |> select(ModelName,Model),by=join_by(Model==ModelName))
-# 
-# ggplot(varcorrs |> group_by(Model.y,grp) |> summarise(vcov.mean=mean(vcov,na.rm=TRUE),vcov.sd=sd(vcov,na.rm=TRUE),vcov.sem=vcov.sd/sqrt(n()))|>
-#          mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
-#                 Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
-#                 Model.y=gsub("WoodDensity","Wood Density",Model.y),
-#                 Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
-#          ##  arrange by residual variance
-#          ungroup()|>
-#          group_by(Model.y)|>
-#          mutate(mean.resid = mean(vcov.mean[grp=="Residual"],na.rm=TRUE))|>
-#          ungroup()|>
-#          arrange(mean.resid)|>
-#          mutate(Model.y=factor(Model.y,levels=unique(Model.y))),
-#        aes(x = grp, y = vcov.mean, fill = grp))+
-#   geom_bar(stat = "identity", position = "dodge") +
-#   geom_errorbar(aes(ymax=vcov.mean+vcov.sem,ymin=vcov.mean-vcov.sem),width=0.2)+
-#   facet_wrap(~Model.y) +
-#   theme_minimal() +
-#   theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
-#   scale_fill_manual(values=c("#A50026",RColorBrewer::brewer.pal(4,"YlOrRd"),RColorBrewer::brewer.pal(9,"YlGnBu")[5:8]))+
-#   guides(fill=guide_legend("Variance Groups"))+
-#   labs(title = "Comparison of Variance Components",
-#        y = "Variance Estimate")
-# 
-# 
-# ###  Fixed effects
-# coefs_full <- mods_scaled_full$coefs |>
-#   select(MixedEffects,Model,contains("Rsq"))|>
-#   tidyr::pivot_longer(cols=contains("Rsq"),names_pattern="(.*)\\.(.*)_(.*)",names_to=c("metric","var","effects"))|>
-#   filter(!is.na(value))|>
-#   rowwise()|>
-#   mutate(Model=as.character(Model),
-#          var=if_else(!grepl(",",Model),Model,
-#                      if_else(grepl("1",var),strsplit(Model,",")[[1]][1],
-#                      if_else(grepl("2",var),strsplit(Model,",")[[1]][2],
-#                              if_else(grepl("3",var),strsplit(Model,",")[[1]][3],
-#                                      if_else(grepl("4",var),strsplit(Model,",")[[1]][4],NA))))),
-#          var = gsub(" ","",var))
-# ggplot(coefs_full) +
-#   geom_boxplot(aes(x=var,y=value))+
-#   facet_grid(vars(MixedEffects),vars(effects))+
-#   theme_bw()+
-#   theme(axis.text.x=element_text(angle=90))
-# ggplot(coefs_full) +
-#   geom_boxplot(aes(x=var,y=value))+
-#   theme_bw()+
-#   theme(axis.text.x=element_text(angle=90))
-# ```
+<!-- ```{r varpart2, eval=FALSE, echo=FALSE, message=FALSE,warning=FALSE"}
+<!-- ##  random effects
+<!-- varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}})
+<!-- varcorrs <- do.call(rbind,varcorrs) |>
+<!--   left_join(performance_rank_filtered |> select(ModelName,Model),by=join_by(Model==ModelName))
+<!-- 
+<!-- ggplot(varcorrs |> group_by(Model.y,grp) |> summarise(vcov.mean=mean(vcov,na.rm=TRUE),vcov.sd=sd(vcov,na.rm=TRUE),vcov.sem=vcov.sd/sqrt(n()))|>
+<!--          mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
+<!-- Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
+<!--                 Model.y=gsub("WoodDensity","Wood Density",Model.y),
+<!--                 Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
+<!--          ##  arrange by residual variance
+<!--          ungroup()|>
+<!--          group_by(Model.y)|>
+<!--          mutate(mean.resid = mean(vcov.mean[grp=="Residual"],na.rm=TRUE))|>
+<!--          ungroup()|>
+<!--          arrange(mean.resid)|>
+<!--          mutate(Model.y=factor(Model.y,levels=unique(Model.y))),
+<!--        aes(x = grp, y = vcov.mean, fill = grp))+
+<!--   geom_bar(stat = "identity", position = "dodge") +
+<!--   geom_errorbar(aes(ymax=vcov.mean+vcov.sem,ymin=vcov.mean-vcov.sem),width=0.2)+
+<!--   facet_wrap(~Model.y) +
+<!--   theme_minimal() +
+<!--   theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
+<!--   scale_fill_manual(values=c("#A50026",RColorBrewer::brewer.pal(4,"YlOrRd"),RColorBrewer::brewer.pal(9,"YlGnBu")[5:8]))+
+<!--   guides(fill=guide_legend("Variance Groups"))+
+<!--   labs(title = "Comparison of Variance Components",
+<!--        y = "Variance Estimate")
+<!-- 
+<!-- 
+<!-- ###  Fixed effects
+<!-- coefs_full <- mods_scaled_full$coefs |>
+<!--   select(MixedEffects,Model,contains("Rsq"))|>
+<!--   tidyr::pivot_longer(cols=contains("Rsq"),names_pattern="(.*)\\.(.*)_(.*)",names_to=c("metric","var","effects"))|>
+<!--   filter(!is.na(value))|>
+<!--   rowwise()|>
+<!--   mutate(Model=as.character(Model),
+<!--          var=if_else(!grepl(",",Model),Model,
+<!--                      if_else(grepl("1",var),strsplit(Model,",")[[1]][1],
+<!--                      if_else(grepl("2",var),strsplit(Model,",")[[1]][2],
+<!--                              if_else(grepl("3",var),strsplit(Model,",")[[1]][3],
+<!--                                      if_else(grepl("4",var),strsplit(Model,",")[[1]][4],NA))))),
+<!--          var = gsub(" ","",var))
+<!-- ggplot(coefs_full) +
+<!--   geom_boxplot(aes(x=var,y=value))+
+<!--   facet_grid(vars(MixedEffects),vars(effects))+
+<!--   theme_bw()+
+<!--   theme(axis.text.x=element_text(angle=90))
+<!-- ggplot(coefs_full) +
+<!--   geom_boxplot(aes(x=var,y=value))+
+<!--   theme_bw()+
+<!--  theme(axis.text.x=element_text(angle=90))
+<!-- ```
 <!-- ```{r results-vis,echo=FALSE,message=FALSE,warning=FALSE} -->
 <!-- predsMM <-mods$predsMM -->
 <!-- predsF <-mods$predsF -->
