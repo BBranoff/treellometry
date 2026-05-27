@@ -662,7 +662,7 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
   ) 
 ```
 
-<!-- ```{r varpart2, eval=FALSE, echo=FALSE, message=FALSE,warning=FALSE"}
+
 <!-- ##  random effects
 <!-- varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}})
 <!-- varcorrs <- do.call(rbind,varcorrs) |>
@@ -782,5 +782,5 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
 <!--   geom_point()+ -->
 <!--   facet_wrap(~RandomVars)+ -->
 <!--   theme_bw() -->
-<!-- ``` -->
+
 
