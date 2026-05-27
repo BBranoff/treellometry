@@ -265,7 +265,7 @@ set of predictor variables.
     ## ℹ Please use `if_any()` or `if_all()` instead.
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
 
-    ## R RNG seed set to 393197
+    ## R RNG seed set to 14355
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -603,7 +603,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpIfzqNV\file7e4c40923843.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpykgW60\file8c3c3e9b6aef.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
@@ -781,20 +781,25 @@ var_list <- do.call(rbind,var_list) |>
   mutate(name=factor(name,levels=c("total","fixed","total random","residual","dispersion","distribution","Site.var1.intercept","Site.var1.slope","Site.var2.intercept","Site.var2.slope",
                                       "Site.var3.intercept","Site.var3.slope","Site.var4.intercept","Site.var4.slope",
                                       "Species.var1.intercept","Species.var1.slope","Species.var2.intercept","Species.var2.slope",
-                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))
-####  plot
-####  with the fixed variance
-ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
+                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))|>
+  group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> 
+  group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
          mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
                 Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
                 Model.y=gsub("WoodDensity","Wood Density",Model.y),
-                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
+                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y),
+                Model.y = if_else(Model.y=="DBH, Height, Canopy Diameter, Wood Density","DBH, Height,\nCanopy Diameter, Wood Density",
+                                  if_else(Model.y=="Height, Canopy Diameter, Wood Density","Height, Canopy Diameter,\nWood Density",
+                                          if_else(Model.y=="Composite: Canopy Diameter x Height x Wood Density","Composite: Canopy Diameter\nx Height x Wood Density",if_else(Model.y=="DBH, Canopy Diameter, Wood Density","DBH, Canopy Diameter,\nWood Density",Model.y)))))|>
          ungroup()|>
          group_by(Model.y)|>
          mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
          ungroup()|>
          arrange(mean.resid)|>
-         mutate(Model.y=factor(Model.y,levels=unique(Model.y))), 
+         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))
+####  plot
+####  with the fixed variance
+ggplot(var_list, 
        aes(x = name, y = var.mean, fill = name)) +
   geom_bar(stat = "identity", color = "black", alpha = 0.8) +
   geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
@@ -806,7 +811,7 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
   labs(
     title = "Fig. 5 Variance Decomposition - with fixed effects.",
     x = "Variance Component",
-    y = "Estimated Variance, Percent of Total"
+    y = "Estimated Variance Assignment, Percent of Total"
   ) 
 ```
 
@@ -814,18 +819,7 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
 
 ``` r
 ### without the fixed and residual variance
-ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
-         mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
-                Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
-                Model.y=gsub("WoodDensity","Wood Density",Model.y),
-                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
-         ungroup()|>
-         group_by(Model.y)|>
-         mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
-         ungroup()|>
-         arrange(mean.resid)|>
-         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))|>
-         filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
+ggplot(var_list|>filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
        aes(x = name, y = var.mean, fill = name)) +
   geom_bar(stat = "identity", color = "black", alpha = 0.8) +
   geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
@@ -840,7 +834,7 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
   labs(
     title = "Fig. 6 Variance Decomposition - fixed effects removed.",
     x = "Variance Component",
-    y = "Estimated Variance , Percent of Total"
+    y = "Estimated Variance Assignment, Percent of Total"
   ) 
 ```
 

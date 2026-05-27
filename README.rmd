@@ -591,7 +591,7 @@ ggplot(random_effects %>% mutate(term=if_else(term=='(Intercept)',"Intercept","S
 ```
 
 
-```{r varpart,fig.width=5, message=FALSE,warning=FALSE,cap="Fig. 5-6 Partitioning the variance in aboveground biomass to fixed effects, random effects, and residuals; means and standard errors for each component within a model family. Total explained variance is at least 90% for all model families, and fixed effects dominate in all models, accounting for the vast majority of variance (Fig 5).  With fixed effects removed (Fig. 6), its easier to compare the random effects, which account for no more than roughly 6% of the variance. This corroborates the view that species and location level information provide relatively little to the variability in allometric relationships."}
+```{r varpart,fig.width=10,fig.height=8, message=FALSE,warning=FALSE,cap="Fig. 5-6 Partitioning the variance in aboveground biomass to fixed effects, random effects, and residuals; means and standard errors for each component within a model family. Panels are ordered in decreased total explained variance, from top left to bottom right. Total explained variance is at least 90% for all model families, and fixed effects dominate in all models, accounting for the vast majority of variance (Fig 5).  With fixed effects removed (Fig. 6), its easier to compare the random effects, which account for no more than roughly 6% of the variance. This corroborates the view that species and location level information provide relatively little to the variability in allometric relationships."}
 library(insight)
 ### apply the 'get_variance()' funtion to all models and format into a data frame.
 var_list <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(get_variance(modskeep[[x]]))|>tibble::rownames_to_column(var="component")|>mutate(component=paste0(gsub("\\d", "",component),"var",as.numeric(gsub("\\D", "",component))+1),component=gsub("varNA",".var1",component))|>select(-contains("cor."))|>rowwise()|>mutate(var.total=sum(c_across(any_of(c("var.fixed","var.random","var.residual"))),na.rm=TRUE))|>tidyr::pivot_longer(cols=contains("var."))|>mutate(Model=names(modskeep)[x],name=gsub("var.","",name),name=if_else(grepl("slope|intercept",name),paste(component,name,sep="."),if_else(name=="random","total random", name)),component=if_else(!grepl("slope|intercept",name),NA,component))|>distinct(component,name,.keep_all = TRUE)}})
@@ -603,20 +603,25 @@ var_list <- do.call(rbind,var_list) |>
   mutate(name=factor(name,levels=c("total","fixed","total random","residual","dispersion","distribution","Site.var1.intercept","Site.var1.slope","Site.var2.intercept","Site.var2.slope",
                                       "Site.var3.intercept","Site.var3.slope","Site.var4.intercept","Site.var4.slope",
                                       "Species.var1.intercept","Species.var1.slope","Species.var2.intercept","Species.var2.slope",
-                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))
-####  plot
-####  with the fixed variance
-ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
+                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))|>
+  group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> 
+  group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
          mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
                 Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
                 Model.y=gsub("WoodDensity","Wood Density",Model.y),
-                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
+                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y),
+                Model.y = if_else(Model.y=="DBH, Height, Canopy Diameter, Wood Density","DBH, Height,\nCanopy Diameter, Wood Density",
+                                  if_else(Model.y=="Height, Canopy Diameter, Wood Density","Height, Canopy Diameter,\nWood Density",
+                                          if_else(Model.y=="Composite: Canopy Diameter x Height x Wood Density","Composite: Canopy Diameter\nx Height x Wood Density",if_else(Model.y=="DBH, Canopy Diameter, Wood Density","DBH, Canopy Diameter,\nWood Density",Model.y)))))|>
          ungroup()|>
          group_by(Model.y)|>
          mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
          ungroup()|>
          arrange(mean.resid)|>
-         mutate(Model.y=factor(Model.y,levels=unique(Model.y))), 
+         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))
+####  plot
+####  with the fixed variance
+ggplot(var_list, 
        aes(x = name, y = var.mean, fill = name)) +
   geom_bar(stat = "identity", color = "black", alpha = 0.8) +
   geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
@@ -628,22 +633,11 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
   labs(
     title = "Fig. 5 Variance Decomposition - with fixed effects.",
     x = "Variance Component",
-    y = "Estimated Variance, Percent of Total"
+    y = "Estimated Variance Assignment, Percent of Total"
   ) 
 
 ### without the fixed and residual variance
-ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
-         mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
-                Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
-                Model.y=gsub("WoodDensity","Wood Density",Model.y),
-                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y))|>
-         ungroup()|>
-         group_by(Model.y)|>
-         mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
-         ungroup()|>
-         arrange(mean.resid)|>
-         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))|>
-         filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
+ggplot(var_list|>filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
        aes(x = name, y = var.mean, fill = name)) +
   geom_bar(stat = "identity", color = "black", alpha = 0.8) +
   geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
@@ -658,7 +652,7 @@ ggplot(var_list |>group_by(Model)|>mutate(value=100*value/value[name=="total"]) 
   labs(
     title = "Fig. 6 Variance Decomposition - fixed effects removed.",
     x = "Variance Component",
-    y = "Estimated Variance , Percent of Total"
+    y = "Estimated Variance Assignment, Percent of Total"
   ) 
 ```
 
