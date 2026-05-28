@@ -7,7 +7,7 @@ output: github_document
 
 # Description
 This is the repository for the journal article:
-Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation.
+Price et al. (2026) Local vs global allometric equations: Evaluating multiple variables in mixed effects models for biomass estimation using a global mangrove data compilation. For the more general 'treellometry' package, visit the ['master' branch](https://github.com/BBranoff/treellometry/master).
 
 
 # Abstract
@@ -493,7 +493,7 @@ We can also now begin to examine some of the results more closely. One way to sc
 
 In the below example, the performance plot for the 'best' family of models is shown. In the plot, the most complex model, with random slopes and intercepts on species and site, seems to perform 'better'. But this is debatable depending on which metrics are prioritized. If BIC (which penalized complexity) is prioritized, a simpler model with only random effects on site, may be optimal. Either way, its clear that in general, for the same set of variable, mixed effects models out-perform the fixed effects versions. This is the primary intention of mixed-effects modelling when hierarchical data is suspected. By partitioning the variance into groups and fitting coefficients separately, mixed-effects models are better able to capture the global and group specific trends.     
 
-```{r performance1,message=FALSE,results='hide',warning=FALSE,cap="Fig. 2 An example of the product of the compare_performance() function from the performance package. The size of the polygons indicate performance, with bigger being better. This is a quick visual way to compare multiple models for common performance metrics. In the next step, the chart is emulated across multiple families of models."}
+```{r performance1,message=FALSE,results='hide',warning=FALSE,fig.cap="Fig. 2 An example of the product of the compare_performance() function from the performance package. The size of the polygons indicate performance, with bigger being better. This is a quick visual way to compare multiple models for common performance metrics. In the next step, the chart is emulated across multiple families of models."}
 ####  model peformance charts
 ####  select the top filtered models
 modskeep_df <- performance_rank_filtered %>%
@@ -515,7 +515,7 @@ plot(perfs[[1]])
 
 However, it may also be pertinent to compare models both within their family as well as among the other families as well. The performance package does not offer this functionality, but we can replicate it. In the below code, we arrange the different metrics among the models in such a way so as to replicate the output of compare_performance. We then scale the metric values so that they are comparable across all of the families. Although doing this makes it slightly more difficult to compare models within families (because the differences are now relatively small) it allows for direct comparisons with the other families. 
 
-```{r performance2,fig.height=10, message=FALSE,warning=FALSE,cap="Fig. 3 Performance charts for all model families. As in Fig. 2, larger polygons indicate better relative performance. The indicated RMSE represents the lowest value within that panel. Because all metric values are scaled across the entire model set, differences within families are relatively small but those between the 'best' (top left) and 'worst' (bottom right) models are more apparent."}
+```{r performance2,fig.height=10, message=FALSE,warning=FALSE,fig.cap="Fig. 3 Performance charts for all model families. As in Fig. 2, larger polygons indicate better relative performance. The indicated RMSE represents the lowest value within that panel. Because all metric values are scaled across the entire model set, differences within families are relatively small but those between the 'best' (top left) and 'worst' (bottom right) models are more apparent."}
 ###  get the stored results for those models
 perfs2 <- lapply(modskeep_df |>
                    pull(ModelN)|>unique(),
@@ -565,12 +565,88 @@ perfs2 %>%
         "horizontal",panel.grid = element_line(color = "grey"))
 ```
 
-We can also examine more closely the random effects of the models. Their effect size is an indication of how important the groups (species and site in our case) are in the overall variability in biomass. Here, for simplicity we examine only the simple regression (uni-variate) models with the most complex combination of mixed effects (random slopes and intercepts on both variables).
+We can also examine more closely the random effects of the models. Here, we demonstrate two metrics of random effects: first, the estimated variance assigned to each component of the model (total variance, fixed variables, random variables, etc.), and second, the effect size as an indication of how important specific groups (species and site in our case) are in the overall variability in biomass. 
 
-The below graphic indicates random effects as a standardized deviation from 0, which is at the center of each panel and marked with a dotted line. Any deviation that is farther from zero than the corresponding error bar (solid horizontal 'wings' for each dot) indicates a significant random effect. For the most part, the random effects for these three models are insignificant, which suggests that site and species are not contributing substantially to the allometric models and global models might be warranted. However, there are exceptions. Height within sites demonstrate the largest effect sizes, suggesting that using height as a predictor of biomass may be location dependent. This is consistent with previous studies that have recognized the latitudinal variability in mangrove height and the relationship between height and biomass [Rovai et al. 2021]("https://doi.org/10.1111/geb.13268"), and is an important consideration when utilizing LiDAR or other remote sensing techniques that rely heavily on height metrics for biomass estimation. Species, on the other hand, was not found to be a significant random effect, suggesting that these allometric relationships are consistent across the three Trans-Atlantic species. Future work will expand to other species and test this relationship. 
+Starting with the overall estimate of explained variance, we use the 'get_variance()' function from the insight package to decompose variance in biomass and how much of it might be explained by different model components. Ultimately, through modeling we are trying to explain why the biomass of one tree might be different than another. These differences are summarised by their variance and we can try to assign this variability (variance) to different variables. In mixed effects modelling, we are pooling this variance into different components (in our case, species and location), and then fitting models of the fixed effects (DBH, Height, etc.) to the remaining variance. Anything left over or unexplained is referred to as the residual variance. 
 
+The below graphic represents the mean and standard error of the mean variance among the different models. The total variance is that of aboveground biomass before any modelling is done. This is slightly different for each model because some observations need to be removed when certain fixed effects are missing. The fixed effects variance is that which is estimated to be explained by the predictor variables (DBH, Height, etc.), and the total random is that which is estimated to be attributed to the combined random effects (species and location). Because some models have random intercepts only and others have random intercepts and slopes, the random variances are further decomposed into the intercept and slope terms for each predictor variable. In the below graphic, we cannot know what var1, var2, var3 etc. are because we have aggregated all models for simplicity, but model specific graphics are provided in the supplementary materials for more detailed insight. 
 
-```{r randomeffects,fig.height=10, message=FALSE,warning=FALSE,cap="Fig. 4 Random effects for the three univariate models. Deviations from the zero line indicate a potentially significant random effect. Species exhibited not significant random effects, although there were only three in this study and all were from the Atlantic geo-region. Location, however, does demonstrate some significant random effects, especially for height. This suggests that height as a predictor of biomass may be location specific."}
+These figures demonstrate that overall explanation of biomass variability is high, around 90% on average, and that the vast majority is explained by fixed effects, with relatively little attributed to random effects. This corroborates the notion that species and location information contribute relatively little to allometric biomass relationships in comparison to the morphological measurements.
+
+```{r varpart,fig.width=10,fig.height=8, message=FALSE,warning=FALSE,fig.cap="Fig. 4 Partitioning the variance in aboveground biomass to fixed effects, random effects, and residuals; means and standard errors for each component among all models. Total estimated explained variance is at least 90% on average, and fixed effects dominate, accounting for the vast majority of variance (Fig 4a).  With fixed effects removed (Fig. 4b), its easier to compare the random effects, which account for no more than roughly 2% of the variance. This corroborates the view that species and location level information provide relatively little to the variability in allometric relationships we are testing for. The same plots for each model family are provided in the supplementary materials."}
+library(insight)
+### apply the 'get_variance()' funtion to all models and format into a data frame.
+var_list <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(get_variance(modskeep[[x]]))|>tibble::rownames_to_column(var="component")|>mutate(component=paste0(gsub("\\d", "",component),"var",as.numeric(gsub("\\D", "",component))+1),component=gsub("varNA",".var1",component))|>select(-contains("cor."))|>rowwise()|>mutate(var.total=sum(c_across(any_of(c("var.fixed","var.random","var.residual"))),na.rm=TRUE))|>tidyr::pivot_longer(cols=contains("var."))|>mutate(Model=names(modskeep)[x],name=gsub("var.","",name),name=if_else(grepl("slope|intercept",name),paste(component,name,sep="."),if_else(name=="random","total random", name)),component=if_else(!grepl("slope|intercept",name),NA,component))|>distinct(component,name,.keep_all = TRUE)}})
+###  remove the non-mixed effects models
+var_list <- Filter(Negate(is.null), var_list)
+###  combine all model data frames
+var_list <- do.call(rbind,var_list) |>
+  left_join(performance_rank_filtered |> select(ModelName,Model),by=join_by(Model==ModelName))|>
+  mutate(name=factor(name,levels=c("total","fixed","total random","residual","dispersion","distribution","Site.var1.intercept","Site.var1.slope","Site.var2.intercept","Site.var2.slope",
+                                      "Site.var3.intercept","Site.var3.slope","Site.var4.intercept","Site.var4.slope",
+                                      "Species.var1.intercept","Species.var1.slope","Species.var2.intercept","Species.var2.slope",
+                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))
+var_list_agg <- var_list |>
+  group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|>
+  group_by(name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
+  ungroup() 
+
+var_list_models <- var_list |>
+  group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> 
+  group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
+         mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
+                Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
+                Model.y=gsub("WoodDensity","Wood Density",Model.y),
+                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y),
+                Model.y = if_else(Model.y=="DBH, Height, Canopy Diameter, Wood Density","DBH, Height,\nCanopy Diameter, Wood Density",
+                                  if_else(Model.y=="Height, Canopy Diameter, Wood Density","Height, Canopy Diameter,\nWood Density",
+                                          if_else(Model.y=="Composite: Canopy Diameter x Height x Wood Density","Composite: Canopy Diameter\nx Height x Wood Density",if_else(Model.y=="DBH, Canopy Diameter, Wood Density","DBH, Canopy Diameter,\nWood Density",Model.y)))))|>
+         ungroup()|>
+         group_by(Model.y)|>
+         mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
+         ungroup()|>
+         arrange(mean.resid)|>
+         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))
+####  plot
+####  with the fixed variance
+ggplot(var_list_agg, 
+       aes(x = name, y = var.mean, fill = name)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
+  scale_fill_manual(values=c("black","#1B9E77","white",RColorBrewer::brewer.pal(8,"YlOrRd"),RColorBrewer::brewer.pal(9,"BuPu")[2:9]))+
+  #facet_wrap(~Model.y) +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
+  guides(fill=guide_legend("Variance Groups"))+
+  labs(
+    title = "Fig. 4a Variance Decomposition - with fixed effects.",
+    x = "Variance Component",
+    y = "Estimated Variance Assignment, Percent of Total"
+  ) 
+
+### without the fixed and residual variance
+ggplot(var_list_agg|>filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
+       aes(x = name, y = var.mean, fill = name)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
+  scale_fill_manual(values=c("#1B9E77",RColorBrewer::brewer.pal(8,"YlOrRd"),RColorBrewer::brewer.pal(9,"BuPu")[2:9]))+
+  #facet_wrap(~Model.y) +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
+  #annotate("text",label="Site",x=5,y=10)+
+  #annotate("text",label="Species",x=13,y=10)+
+  #geom_vline(xintercept=c(1.5,9.5),lty=2)+
+  guides(fill=guide_legend("Variance Groups"))+
+  labs(
+    title = "Fig. 4b Variance Decomposition - fixed effects removed.",
+    x = "Variance Component",
+    y = "Estimated Variance Assignment, Percent of Total"
+  ) 
+```
+
+We can then further inspect the random effects for specific species and locations. Here, for simplicity we examine only the simple regression (uni-variate) models with the most complex combination of mixed effects (random slopes and intercepts on both variables).The below graphic indicates random effects as a standardized deviation from 0, which is at the center of each panel and marked with a dotted line. Any deviation that is farther from zero than the corresponding error bar (solid horizontal 'wings' for each dot) indicates a significant random effect. For the most part, the random effects for these three models are insignificant, which suggests that site and species are not contributing substantially to the allometric models and global models might be warranted. However, there are exceptions. Height within sites demonstrate the largest effect sizes, suggesting that using height as a predictor of biomass may be location dependent. This is consistent with previous studies that have recognized the latitudinal variability in mangrove height and the relationship between height and biomass [Rovai et al. 2021]("https://doi.org/10.1111/geb.13268"), and is an important consideration when utilizing LiDAR or other remote sensing techniques that rely heavily on height metrics for biomass estimation. Species, on the other hand, was not found to be a significant random effect, suggesting that these allometric relationships are consistent across the three Trans-Atlantic species. Future work will expand to other species and test this relationship. 
+
+```{r randomeffects,fig.height=10, message=FALSE,warning=FALSE,fig.cap="Fig. 5 Random effects for the three univariate models. Deviations from the zero line indicate a potentially significant random effect. Species exhibited non-significant random effects, although there were only three species in this study and all were from the Atlantic geo-region. Location, however, does demonstrate some significant random effects, especially for height. This suggests that height as a predictor of biomass may be location specific."}
 library(lme4)
 random_effects <- rbind(as.data.frame(ranef(mods_scaled$mods[[3]])) %>% mutate(pred="DBH"),
                         as.data.frame(ranef(mods_scaled$mods[[10]])) %>% mutate(pred="Height"),
@@ -589,73 +665,6 @@ ggplot(random_effects %>% mutate(term=if_else(term=='(Intercept)',"Intercept","S
   xlab("Conditional Mode")+ylab("Group")+
   theme_bw()
 ```
-
-
-```{r varpart,fig.width=10,fig.height=8, message=FALSE,warning=FALSE,cap="Fig. 5-6 Partitioning the variance in aboveground biomass to fixed effects, random effects, and residuals; means and standard errors for each component within a model family. Panels are ordered in decreased total explained variance, from top left to bottom right. Total explained variance is at least 90% for all model families, and fixed effects dominate in all models, accounting for the vast majority of variance (Fig 5).  With fixed effects removed (Fig. 6), its easier to compare the random effects, which account for no more than roughly 6% of the variance. This corroborates the view that species and location level information provide relatively little to the variability in allometric relationships."}
-library(insight)
-### apply the 'get_variance()' funtion to all models and format into a data frame.
-var_list <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(get_variance(modskeep[[x]]))|>tibble::rownames_to_column(var="component")|>mutate(component=paste0(gsub("\\d", "",component),"var",as.numeric(gsub("\\D", "",component))+1),component=gsub("varNA",".var1",component))|>select(-contains("cor."))|>rowwise()|>mutate(var.total=sum(c_across(any_of(c("var.fixed","var.random","var.residual"))),na.rm=TRUE))|>tidyr::pivot_longer(cols=contains("var."))|>mutate(Model=names(modskeep)[x],name=gsub("var.","",name),name=if_else(grepl("slope|intercept",name),paste(component,name,sep="."),if_else(name=="random","total random", name)),component=if_else(!grepl("slope|intercept",name),NA,component))|>distinct(component,name,.keep_all = TRUE)}})
-###  remove the non-mixed effects models
-var_list <- Filter(Negate(is.null), var_list)
-###  combine all model data frames
-var_list <- do.call(rbind,var_list) |>
-  left_join(performance_rank_filtered |> select(ModelName,Model),by=join_by(Model==ModelName))|>
-  mutate(name=factor(name,levels=c("total","fixed","total random","residual","dispersion","distribution","Site.var1.intercept","Site.var1.slope","Site.var2.intercept","Site.var2.slope",
-                                      "Site.var3.intercept","Site.var3.slope","Site.var4.intercept","Site.var4.slope",
-                                      "Species.var1.intercept","Species.var1.slope","Species.var2.intercept","Species.var2.slope",
-                                      "Species.var3.intercept","Species.var3.slope","Species.var4.intercept","Species.var4.slope")))|>
-  group_by(Model)|>mutate(value=100*value/value[name=="total"]) |> filter(!name %in% c("dispersion","distribution","total"))|> 
-  group_by(Model.y,name) |> summarise(var.mean=mean(value,na.rm=TRUE),var.sd=sd(value,na.rm=TRUE),var.sem=var.sd/sqrt(n()))|>
-         mutate(Model.y=gsub("\\.cm|\\.m|\\.g\\.cm3","",Model.y),
-                Model.y=gsub("CanopyDiameter","Canopy Diameter",Model.y),
-                Model.y=gsub("WoodDensity","Wood Density",Model.y),
-                Model.y=gsub("Comp.Can.H.Den","Composite: Canopy Diameter x Height x Wood Density",Model.y),
-                Model.y = if_else(Model.y=="DBH, Height, Canopy Diameter, Wood Density","DBH, Height,\nCanopy Diameter, Wood Density",
-                                  if_else(Model.y=="Height, Canopy Diameter, Wood Density","Height, Canopy Diameter,\nWood Density",
-                                          if_else(Model.y=="Composite: Canopy Diameter x Height x Wood Density","Composite: Canopy Diameter\nx Height x Wood Density",if_else(Model.y=="DBH, Canopy Diameter, Wood Density","DBH, Canopy Diameter,\nWood Density",Model.y)))))|>
-         ungroup()|>
-         group_by(Model.y)|>
-         mutate(mean.resid = mean(var.mean[name=="residual"],na.rm=TRUE))|>
-         ungroup()|>
-         arrange(mean.resid)|>
-         mutate(Model.y=factor(Model.y,levels=unique(Model.y)))
-####  plot
-####  with the fixed variance
-ggplot(var_list, 
-       aes(x = name, y = var.mean, fill = name)) +
-  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
-  geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
-  scale_fill_manual(values=c("#A50026","#1B9E77","white",RColorBrewer::brewer.pal(8,"YlOrRd"),RColorBrewer::brewer.pal(9,"BuPu")[2:9]))+
-  facet_wrap(~Model.y) +
-  theme_bw() +
-  theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
-  guides(fill=guide_legend("Variance Groups"))+
-  labs(
-    title = "Fig. 5 Variance Decomposition - with fixed effects.",
-    x = "Variance Component",
-    y = "Estimated Variance Assignment, Percent of Total"
-  ) 
-
-### without the fixed and residual variance
-ggplot(var_list|>filter(!name %in% c("dispersion","distribution","total","fixed","residual")), 
-       aes(x = name, y = var.mean, fill = name)) +
-  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
-  geom_errorbar(aes(ymax=var.mean+var.sem,ymin=var.mean-var.sem),width=0.2)+
-  scale_fill_manual(values=c("#1B9E77",RColorBrewer::brewer.pal(8,"YlOrRd"),RColorBrewer::brewer.pal(9,"BuPu")[2:9]))+
-  facet_wrap(~Model.y) +
-  theme_bw() +
-  theme(axis.text.x=element_blank(),axis.title.x=element_blank())+
-  #annotate("text",label="Site",x=5,y=10)+
-  #annotate("text",label="Species",x=13,y=10)+
-  #geom_vline(xintercept=c(1.5,9.5),lty=2)+
-  guides(fill=guide_legend("Variance Groups"))+
-  labs(
-    title = "Fig. 6 Variance Decomposition - fixed effects removed.",
-    x = "Variance Component",
-    y = "Estimated Variance Assignment, Percent of Total"
-  ) 
-```
-
 
 <!-- ##  random effects-->
 <!-- varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}})-->
