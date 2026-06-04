@@ -50,6 +50,8 @@ library(treellometry)
 library(dplyr)
 ```
 
+    ## Warning: package 'ggplot2' was built under R version 4.5.3
+
 With the library successfully loaded, the following methods will
 demonstrate the workflow documented in the above publication. The first
 steps are to create the composite variables (product of variables).
@@ -135,9 +137,11 @@ ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiam
 
 <figure>
 <img src="README_files/figure-gfm/pdf-1.png"
-alt="Fig. 5 Cross validation of the models indicates that…." />
-<figcaption aria-hidden="true">Fig. 5 Cross validation of the models
-indicates that….</figcaption>
+alt="Fig. 1 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three" />
+<figcaption aria-hidden="true">Fig. 1 Distributions of the predictor
+variables. Notice the greater variance between locations, compared to
+that between species. Wood density is not shown as it was species
+specific and thus only composed of three</figcaption>
 </figure>
 
 ``` r
@@ -150,9 +154,11 @@ ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiam
 
 <figure>
 <img src="README_files/figure-gfm/pdf-2.png"
-alt="Fig. 5 Cross validation of the models indicates that…." />
-<figcaption aria-hidden="true">Fig. 5 Cross validation of the models
-indicates that….</figcaption>
+alt="Fig. 1 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three" />
+<figcaption aria-hidden="true">Fig. 1 Distributions of the predictor
+variables. Notice the greater variance between locations, compared to
+that between species. Wood density is not shown as it was species
+specific and thus only composed of three</figcaption>
 </figure>
 
 ## A look inside ‘explore_allom_models()’
@@ -320,7 +326,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 573713
+    ## R RNG seed set to 917006
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -577,10 +583,9 @@ RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
   # calculate relative RMSE using the mean AGB for the model
   meanAGB <- mean(resp ,na.rm=TRUE)
   # Return data frame
-  data.frame(Model=Model,RMSE = RMSE, RMSE_lin_bask = RMSE_lin, meanAGB=meanAGB,RRMSE_lin_bask=100*RMSE_lin/meanAGB)
+  data.frame(Model=Model,RMSE = RMSE, RMSE_lin = RMSE_lin, meanAGB=meanAGB,RelRMSE_lin=100*RMSE_lin/meanAGB)
 })
 RMSE_lin <- do.call(rbind,RMSE_lin)
-
 ##  pivot the table and categorize metrics and models
 performance_long <- performance %>%
   #tidyr::left_join(RMSE_lin %>% select())
@@ -588,11 +593,19 @@ performance_long <- performance %>%
   mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
          ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
   filter(Metric!="ICC2")%>%
-  distinct(across(1:7),.keep_all = TRUE)
+  distinct(across(1:7),.keep_all = TRUE)|>
+  mutate(Metric=if_else(grepl("RMSE",Metric),gsub("RMSE","RMSE_log",Metric),Metric))
 ##  add in the linear RMSE values
 performance_long <- bind_rows(performance_long,
                           performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,MixedEffects,Effects,ModelName) %>% distinct()%>%
-  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMSE_log","RMSE_lin_bask","RRMSE_lin_bask")),by=join_by(ModelName==Model)))
+  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMSE_log","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
+
+##  return back to wide format
+performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>tidyr::fill(everything(),.direction = "down")|>filter(!is.na(MixedEffects))|>
+  relocate(RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
+  relocate(RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
+  relocate(RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
+
 ##  rank the models based on their metrics
 performance_ranked <- performance_long
 performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
@@ -614,13 +627,15 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ungroup()%>%
   ##  now pivot back to wider with the rankings
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank")) %>%
+  ## remove singular ranking
+  select(-contains("rank_Singular"))%>%
   rowwise()%>%
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
   ##  These suggest random effects are either minimal (zero) or there is not enough information to compute
-  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin_bask,globalrank_Sig,globalrank_RMSE.CVsd)),
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin_bask,familyrank_Sig,familyrank_RMSE.CVsd)),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
   ###  now create a master global rank based on the means
@@ -650,12 +665,13 @@ coef_wide <- coef_long %>%
   relocate(ModelN,Effects,.before=MixedEffects)
 performance_ranked <- performance_ranked %>% 
   left_join(coef_wide%>%select(ModelN,MixedEffects,Effects,maxVIF),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))%>%
-  relocate(maxVIF,.after=value_ICC)
+  relocate(maxVIF,.after=value_ICC)|>
+  relocate(value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
 coefs_filtered <- coef_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects)) %>%  relocate(ModelN)
 coefs_ranked <- coefs_filtered[match(paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects),
                                        paste0(coefs_filtered$ModelN,coefs_filtered$MixedEffects,coefs_filtered$Effects)), ]
-performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE,value_RMSE_lin_bask,value_RRMSE_lin_bask,value_RMSE.CVmean:value_ICC) %>%
+performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
   left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 ```
 
@@ -700,7 +716,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpAfwv5F\filebd7041116714.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpmcaGgf\file4a8862acc23.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
@@ -786,18 +802,18 @@ perfs2 <- do.call(rbind,perfs2) |>
          RandomEffects=if_else(Model.x=="lm","none",gsub("Int","Int.",RandomEffects)),
          RandomEffects = if_else(RandomEffects=="Int.Slope", "Int. & Slope",RandomEffects),
          ###  create the title for each panel, which includes the minimum RMSE for each family
-         Model.y = paste0(Model.y,"\n RMSE: ",round(min(RMSE_lin_bask,na.rm=TRUE)))) |>
+         Model.y = paste0(Model.y,"\n RMSE: ",round(min(RMSE_lin,na.rm=TRUE)))) |>
   ungroup() |>
-  arrange(RMSE_lin_bask) |>
+  arrange(RMSE_lin) |>
   mutate(Model.y=factor(Model.y,levels=unique(Model.y))) %>%
-  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMSE_lin_bask","RMSE.CVsd"))|>
+  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMSE_lin","RMSE_log.CVsd"))|>
   group_by(name) |>
   ###  re-scale the metrics so that the spiderwebs are comparable across families
   mutate(value2=if_else(name %in% c("Rsq"),scales::rescale(value,to=c(0.1,1)),scales::rescale(-value,to=c(0.1,1))),
          group=paste(RandomVars,RandomEffects,sep=" "),
          group=if_else(group=="none none","Fixed",group)) |>
   ungroup() %>%
-  mutate(name=factor(name,levels=c("AIC","BIC","RMSE_lin_bask","RMSE.CVsd","Rsq","Sigma")))
+  mutate(name=factor(name,levels=c("AIC","BIC","RMSE_lin","RMSE_log.CVsd","Rsq","Sigma")))
   
 ###  plot the performance plots
 perfs2 %>%
@@ -1104,7 +1120,7 @@ data. For models incorporating random slopes, however, CV indicates
 unstable results and non-applicability to new data.
 
 ``` r
-ggplot(performance_ranked,aes(y=value_RMSE.CVmean,x=value_RMSE)) +
+ggplot(performance_ranked,aes(y=value_RMSE_log.CVmean,x=value_RMSE_log)) +
   geom_point(shape=21,col="white",fill="blue",size=3)+
   geom_abline(slope=1,intercept=0)+
   theme_classic()+
@@ -1112,12 +1128,7 @@ ggplot(performance_ranked,aes(y=value_RMSE.CVmean,x=value_RMSE)) +
   xlab("RMSE")+ylab("RMSE CV")
 ```
 
-<figure>
-<img src="README_files/figure-gfm/CV-1.png"
-alt="Fig. 5 Cross validation of the models indicates that…." />
-<figcaption aria-hidden="true">Fig. 5 Cross validation of the models
-indicates that….</figcaption>
-</figure>
+![](README_files/figure-gfm/CV-1.png)<!-- -->
 
 ``` r
 preds <- cbind(mods$predsF[,c("Species","Site","AGB.kg","logAGB.kg","preds_12.Fixed")],
@@ -1132,10 +1143,8 @@ ggplot(preds,aes(y=exp(logAGB.kg),x=exp(value),col=Site,shape=Species)) +
 ```
 
 <figure>
-<img src="README_files/figure-gfm/CV2-1.png"
-alt="Fig. 5 Cross validation of the models indicates that…." />
-<figcaption aria-hidden="true">Fig. 5 Cross validation of the models
-indicates that….</figcaption>
+<img src="README_files/figure-gfm/predictions-1.png" alt="Fig. X" />
+<figcaption aria-hidden="true">Fig. X</figcaption>
 </figure>
 
 <!-- ##  random effects-->
