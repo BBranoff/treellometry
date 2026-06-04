@@ -152,21 +152,6 @@ to scale them to the same order of magnitude. This would be important
 for mixed effects models utilizing predictor variables from very
 different orders of magnitude.
 
-``` r
-(ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
-         mutate(value=log10(value),
-                Site=factor(Site,levels=c("Biscayne","Benin","San Juan","Bertioga","Everglades","Louisiana","Guadeloupe","Guaratiba","French Guiana","Puerto Rico"))))+
-         geom_density(aes(x=value,fill=Site),alpha=0.5)+
-  scale_fill_manual(values=c("#B283BA","#FFE76D","#FE8F89","#95D8F5","#66AAD7","#A2B4FE","#E89875","#C67282","#ADCD82","#F4D078"))+
-  facet_wrap(~name)+
-  theme_classic())/
-(ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
-         mutate(value=log10(value)))+
-         geom_density(aes(x=value,fill=Species),alpha=0.5)+
-  facet_wrap(~name)+
-  theme_classic())
-```
-
 <figure>
 <img src="README_files/figure-gfm/pdf-1.png"
 alt="Fig.2 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three" />
@@ -296,7 +281,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 21894
+    ## R RNG seed set to 953657
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -504,14 +489,12 @@ predictor variables and mixed effects. The ‘mods’ object contains the
 actual models as well as tables of their coefficients, various model
 performance metrics, and predictions from the models. We will now sort
 through, filter, and rank the models based on these performance metrics.
-Remember that while performance metrics are best scrutinized on models
-in which variables were scaled, model coefficients only make sense for
-unscaled variables. Focusing first on the model performance metrics,
-with scaled data, we first arrange and rank the models based on their
-performance.Here we also take the important step of calculating a
-back-transformed RMSE value for each model. It has been shown that
-taking a simple exponential of a log transformed value will reflect the
-geometric mean, not the average, which is intended [Baskerville,
+Focusing first on the model performance metrics, we first arrange and
+rank the models based on their performance.Here we also take the
+important step of calculating a back-transformed RMSE value for each
+model. It has been shown that taking a simple exponential of a log
+transformed value will reflect the geometric mean, not the average,
+which is intended [Baskerville,
 1971](https://cdnsciencepub.com/doi/epdf/10.1139/x72-009). Therefore, we
 apply a correction factor to the predicted values to back-transform them
 to the linear scale, and then we calculate the residuals and the linear
@@ -520,6 +503,17 @@ $$estimate = exp(\hat{y}+\frac{\sigma^2}{2})$$ where $\hat{y}$ is the
 log scaled prediction from the model and $\sigma^2$ is the square of the
 sigma value returned by the model, essentially the residual standard
 error of the model.
+
+We also calculate the Root Median Square Error (RMdSE). This metric
+helps evaluate the per-tree error rather than the per-dataset error that
+is more represented by the RMSE. Because large trees are exceptionally
+rare, and because an ordinary least squares regression (such as the ones
+we are performing) will be best representative of the median tree sizes,
+error terms for the outliers will typically be much larger and these
+errors will strongly skew the RMSE towards the greater values. While the
+RMSE is still a good metric to compare models for full-dataset error,
+the RMdSE is better suited to reflect how much error is ‘typical’ for
+each tree.
 
 ``` r
 ##  this same process is repeated for the >5cm dbh dataset as well 
@@ -548,12 +542,15 @@ RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
   RMSE <- sqrt(mean((resp_log - preds_log)^2, na.rm = TRUE))
   # Apply Baskerville correction and back-transform
   preds_lin <- exp(preds_log) * exp((sigma_val^2) / 2)
-  # Calculate back-transformed RMSE
+  # Calculate back-transformed RMSEn and RMdSE
   RMSE_lin <- sqrt(mean((resp - preds_lin)^2, na.rm = TRUE))
+  RMdSE_lin <- sqrt(median((resp - preds_lin)^2, na.rm = TRUE))
   # calculate relative RMSE using the mean AGB for the model
   meanAGB <- mean(resp ,na.rm=TRUE)
+  medianAGB <- median(resp ,na.rm=TRUE)
   # Return data frame
-  data.frame(Model=Model,RMSE = RMSE, RMSE_lin = RMSE_lin, meanAGB=meanAGB,RelRMSE_lin=100*RMSE_lin/meanAGB)
+  data.frame(Model=Model,RMSE = RMSE, RMSE_lin = RMSE_lin,RMdSE_lin=RMdSE_lin, meanAGB=meanAGB,medianAGB=medianAGB,RelRMSE_lin=100*RMSE_lin/meanAGB,
+             RelRMdSE_lin=100*RMdSE_lin/medianAGB)
 })
 RMSE_lin <- do.call(rbind,RMSE_lin)
 ##  pivot the table and categorize metrics and models
@@ -568,13 +565,13 @@ performance_long <- performance %>%
 ##  add in the linear RMSE values
 performance_long <- bind_rows(performance_long,
                           performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,MixedEffects,Effects,ModelName) %>% distinct()%>%
-  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMSE_log","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
+  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format
 performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>tidyr::fill(everything(),.direction = "down")|>filter(!is.na(MixedEffects))|>
-  relocate(RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
-  relocate(RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
-  relocate(RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
+  relocate(RMdSE_lin_Fixed,RelRMdSE_lin_Fixed,RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
+  relocate(RMdSE_lin_MixedInt,RelRMdSE_lin_MixedInt,RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
+  relocate(RMdSE_lin_MixedIntSlope,RelRMdSE_lin_MixedIntSlope,RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
 
 ##  rank the models based on their metrics
 performance_ranked <- performance_long
@@ -603,9 +600,9 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
   ##  These suggest random effects are either minimal (zero) or there is not enough information to compute
-  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
   ###  now create a master global rank based on the means
@@ -618,7 +615,7 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   relocate(masterrank_global,masterrank_family,.after=Effects)%>%
   arrange(masterrank_global)
 
-##  attach the VIF values from the coefficients table, this time sourced from the unscaled data models
+##  attach the VIF values from the coefficients table
 coef <- mods$coefs |>
   mutate(across(6:32,~round(.x,5)))|>
   rowwise()|>
@@ -633,25 +630,22 @@ coef_long <- coef %>%
 coef_wide <- coef_long %>%
   tidyr::pivot_wider(names_from=Coefficient)%>%
   relocate(ModelN,Effects,.before=MixedEffects)
+
 performance_ranked <- performance_ranked %>% 
   left_join(coef_wide%>%select(ModelN,MixedEffects,Effects,maxVIF),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))%>%
   relocate(maxVIF,.after=value_ICC)|>
-  relocate(value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
+  relocate(value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
+
 coefs_filtered <- coef_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects)) %>%  relocate(ModelN)
 coefs_ranked <- coefs_filtered[match(paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects),
                                        paste0(coefs_filtered$ModelN,coefs_filtered$MixedEffects,coefs_filtered$Effects)), ]
-performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
+performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
   left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 ```
 
 The above created tables are stored in ‘Tables’ folder of this
-repository. Although they all contain the same identifying information
-that allows for comparisons across tables (coefficients versus
-performance metrics), the filenames of the tables indicate that while
-the performance metrics come from models in which variables were scaled
-prior to fitting, the coefficient tables do not. This is important to
-note for interpretation and for replication.
+repository.
 
 We now have a dataset (performance_ranked) with the top performing model
 from each family of predictor variables, ranked by their performance
@@ -677,7 +671,7 @@ one example from the ‘top’ model.
 
 ``` r
 ######  testing assumptions on the top ranked models
-checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
+checks <- lapply(unique(performance_ranked$ModelName),function(x){
   pdf(file = paste0("./Assumptions/",x,"-model_checks.pdf"), width = 9, height = 11)
   print(performance::check_model(mods$mods[[x]]))
   dev.off()
@@ -686,7 +680,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpYN1TjB\file7a40222c2003.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpY7K1wC\filed34432d7289.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
@@ -776,38 +770,95 @@ perfs2 <- do.call(rbind,perfs2) |>
   ungroup() |>
   arrange(RMSE_lin) |>
   mutate(Model.y=factor(Model.y,levels=unique(Model.y))) %>%
-  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMSE_lin","RMSE_log.CVsd"))|>
+  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMdSE_lin","RMSE_lin","RMSE_log.CVsd"))|>
   group_by(name) |>
   ###  re-scale the metrics so that the spiderwebs are comparable across families
   mutate(value2=if_else(name %in% c("Rsq"),scales::rescale(value,to=c(0.1,1)),scales::rescale(-value,to=c(0.1,1))),
          group=paste(RandomVars,RandomEffects,sep=" "),
          group=if_else(group=="none none","Fixed",group)) |>
   ungroup() %>%
-  mutate(name=factor(name,levels=c("AIC","BIC","RMSE_lin","RMSE_log.CVsd","Rsq","Sigma")))
+  mutate(name=if_else(name=="RMdSE_lin","RMdSE_\nlin",if_else(name=="RMSE_log.CVsd","RMSE_\nCVsd",if_else(name=="RMSE_lin","RMSE_\nlin",name))),
+         name=factor(name,levels=c("AIC","BIC","RMdSE_\nlin","RMSE_\nlin","RMSE_\nCVsd","Rsq","Sigma")))
   
 ###  plot the performance plots
+plot_index=0
 perfs2 %>%
   ggplot(aes(x=name,y=value2,color=group,group=group))+
   facet_wrap(~Model.y,scales="free",ncol =4,labeller=label_wrap_gen(width = 20))+
   geom_polygon(linewidth=1,alpha=0)+
+  scale_x_discrete(
+    labels = function(x) {
+      plot_index <<- plot_index + 1
+      # Only return labels for the 2nd facet (e.g., cyl == 6)
+      if (plot_index == 1) {
+        return(x)
+      } else {
+        return("") # Empties out the text for other facets
+      }
+    })+
   see::coord_radar()+
   scale_y_continuous(limits=c(0,1))+
   guides(color=guide_legend("Model Type",ncol=2)) +
   theme_bw()+
-  theme(axis.text =element_blank(),axis.title = element_blank(), axis.ticks=element_blank(),legend.position = "bottom",legend.direction =
-        "horizontal",panel.grid = element_line(color = "grey"))
+  theme(axis.text.y =element_blank(),axis.title = element_blank(), axis.ticks=element_blank(),legend.position = "bottom",legend.direction =
+        "horizontal",panel.grid = element_line(color = "grey"),panel.background = element_blank())
 ```
 
 <figure>
 <img src="README_files/figure-gfm/performance2-1.png"
-alt="Fig. S1 Performance charts for all model families. As in Fig. 2, larger polygons indicate better relative performance. The indicated RMSE represents the lowest value within that panel. Because all metric values are scaled across the entire model set, differences within families are relatively small but those between the ‘best’ (top left) and ‘worst’ (bottom right) models are more apparent." />
+alt="Fig. S1 Performance charts for all model families. As in Fig. 2, larger polygons indicate better relative performance. The indicated RMSE represents the lowest value within that panel. Because all metric values are log-scaled across the entire model set, differences within families are relatively small but those between the ‘best’ (top left) and ‘worst’ (bottom right) models are more apparent." />
 <figcaption aria-hidden="true">Fig. S1 Performance charts for all model
 families. As in Fig. 2, larger polygons indicate better relative
 performance. The indicated RMSE represents the lowest value within that
-panel. Because all metric values are scaled across the entire model set,
-differences within families are relatively small but those between the
-‘best’ (top left) and ‘worst’ (bottom right) models are more
+panel. Because all metric values are log-scaled across the entire model
+set, differences within families are relatively small but those between
+the ‘best’ (top left) and ‘worst’ (bottom right) models are more
 apparent.</figcaption>
+</figure>
+
+Another subject of interest involving the performance metrics is how
+well a model performs given the number of variables it considers.
+Typically models performs better with more predictors, as each predictor
+should be able to explain even a small amount of variance, which boosts
+performance. However, overly complex models are not always better,
+despite better performance. This is because greater complexity
+introduces greater potential for error and more difficulty in
+interpretation, which may not be warranted for only a small increase in
+predictive performance. The below figure demonstrates that for many
+performance metrics, there are simpler models that perform nearly as
+good or better than models with more predictors and more complexity.
+
+``` r
+ggplot(performance_long|>filter(Metric %in% c("AIC","BIC","Rsq","RMSE_lin","Sig","RMSE_log.CVsd"))|>
+         mutate(NumPredictors=if_else(Effects=="Fixed",NumPredictors-0.1,if_else(Effects=="MixedIntSlope",NumPredictors+0.1,NumPredictors)),
+                Metric = if_else(Metric=="Rsq","R squared",if_else(Metric=="Sig","Sigma",if_else(Metric=="RMSE_log.CVsd","RMSE CV standard deviation",
+                                                                                                 if_else(Metric=="RMSE_lin","linear RMSE",Metric)))),
+                Metric=factor(Metric,levels=c("R squared","AIC","BIC","Sigma","linear RMSE","RMSE CV standard deviation")),
+                Effects=if_else(Effects=="MixedInt","Mixed Intercept",if_else(Effects=="MixedIntSlope","Mixed Intercept & Slope",Effects))),
+       aes(x=NumPredictors,y=value,col=Effects))+
+  geom_point(width = 0.2, height = 0)+
+  facet_wrap(~Metric,ncol=2,scales='free_y')+
+  theme_classic()+
+  guides(color=guide_legend(title=""))+
+  xlab("Number of Predictors")+
+  theme(axis.title.y=element_blank(),legend.position = "bottom")
+```
+
+<figure>
+<img src="README_files/figure-gfm/Fig3-1.png"
+alt="Fig. 3 Bivariate plots of our six summary statistics (Panels A-F, R2, AIC, BIC, Sigma, the linear RMSE, and the standard deviation of the cross validated log scale RMSE.) as a function of the number of predictors. The different modelling types; fixed effects, mixed intercept and mixed intercept and slope, are denoted with pink, green and blue circles, respectively. The symbols for each number of predictors are offset slightly (shifted on the x-axis) to increase visibility, e.g. all of the symbols on the far left of Panel A have just a single predictor. Note that while models with more predictors tend to perform better (higher R2, lower everything else), many of the models with 1 or 2 predictors also perform reasonably well. Please consult Tables 3, S1-3 for specific model details." />
+<figcaption aria-hidden="true">Fig. 3 Bivariate plots of our six summary
+statistics (Panels A-F, R2, AIC, BIC, Sigma, the linear RMSE, and the
+standard deviation of the cross validated log scale RMSE.) as a function
+of the number of predictors. The different modelling types; fixed
+effects, mixed intercept and mixed intercept and slope, are denoted with
+pink, green and blue circles, respectively. The symbols for each number
+of predictors are offset slightly (shifted on the x-axis) to increase
+visibility, e.g. all of the symbols on the far left of Panel A have just
+a single predictor. Note that while models with more predictors tend to
+perform better (higher R2, lower everything else), many of the models
+with 1 or 2 predictors also perform reasonably well. Please consult
+Tables 3, S1-3 for specific model details.</figcaption>
 </figure>
 
 We can also examine more closely the random effects of the models. Here,
@@ -1100,23 +1151,16 @@ ggplot(performance_ranked,aes(y=value_RMSE_log.CVmean,x=value_RMSE_log)) +
 
 ![](README_files/figure-gfm/CV-1.png)<!-- -->
 
-``` r
-preds <- cbind(mods$predsF[,c("Species","Site","AGB.kg","logAGB.kg","preds_12.Fixed")],
-               data.frame(mods$predsMM[,"preds_12.MixedInt_Species&Site"]))|>
-  rename(preds_12.MixedInt_SpeciesandSite=mods.predsMM....preds_12.MixedInt_Species.Site..)|>
-  tidyr::pivot_longer(cols=c("preds_12.MixedInt_SpeciesandSite","preds_12.Fixed"))
-
-ggplot(preds,aes(y=exp(logAGB.kg),x=exp(value),col=Site,shape=Species)) +
-  geom_point()+
-  geom_abline(intercept=0,slope=1)+
-  facet_wrap(~name)
-```
-
-<figure>
-<img src="README_files/figure-gfm/predictions-1.png" alt="Fig. X" />
-<figcaption aria-hidden="true">Fig. X</figcaption>
-</figure>
-
+<!-- ```{r predictions,fig.height=5, message=FALSE,warning=FALSE,fig.cap="Fig. X "} -->
+<!-- preds <- cbind(mods$predsF[,c("Species","Site","AGB.kg","logAGB.kg","preds_12.Fixed")], -->
+<!--                data.frame(mods$predsMM[,"preds_12.MixedInt_Species&Site"]))|> -->
+<!--   rename(preds_12.MixedInt_SpeciesandSite=mods.predsMM....preds_12.MixedInt_Species.Site..)|> -->
+<!--   tidyr::pivot_longer(cols=c("preds_12.MixedInt_SpeciesandSite","preds_12.Fixed")) -->
+<!-- ggplot(preds,aes(y=exp(logAGB.kg),x=exp(value),col=Site,shape=Species)) + -->
+<!--   geom_point()+ -->
+<!--   geom_abline(intercept=0,slope=1)+ -->
+<!--   facet_wrap(~name) -->
+<!-- ``` -->
 <!-- ##  random effects-->
 <!-- varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}})-->
 <!-- varcorrs <- do.call(rbind,varcorrs) |>-->
