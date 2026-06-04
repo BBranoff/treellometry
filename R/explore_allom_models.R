@@ -3,17 +3,13 @@
 #' @importFrom tibble as_tibble_row tibble
 #' @importFrom r2glmm r2beta
 #' @importFrom dplyr mutate filter across left_join select n bind_cols join_by bind_rows cur_group_id last_col relocate group_by ungroup
-explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=FALSE,varorder=FALSE,minmaxDBH=NULL) {
+explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=FALSE,varorder=FALSE) {
   if (responseVar %in% predictorVars) stop("Response variable found in predictor variables")
   # Log-transform response and predictors
-  dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
-  for (var in predictorVars) {
-    dat[[paste0("log", var)]] <- log(dat[[var]])
-  }
-  if (!is.null(minmaxDBH)){
-    if (!is.na(minmaxDBH[1])) dat <- dat |> filter(DBH.cm>=minmaxDBH[1])
-    if (!is.na(minmaxDBH[2])) dat <- dat |> filter(DBH.cm<=minmaxDBH[2])
-  }
+  #dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
+  #for (var in predictorVars) {
+  #  dat[[paste0("log", var)]] <- log(dat[[var]])
+  #}
   if (scle==TRUE){
     dat <- dat |>
       mutate( across(contains(predictorVars),function(x) scale(x)[,1]))#,.names = "{paste0(col, '_scaled')}"))
@@ -47,16 +43,18 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
       ##  for each of the predictor combinations, run the models
       for (p in 1:nrow(perms)){
         preds <- perms[p,]
-        log_preds <- paste0("log", preds)#,"_scaled")
+        #log_preds <- paste0("log", preds)#,"_scaled")
         ###  remove missing values
-        data_clean <- dat |> filter(across(c(log_preds,paste0("log", responseVar)), ~ !is.na(.)))
+        data_clean <- dat |> filter(across(c(preds,responseVar), ~ !is.na(.)))
         ###  create the model formulas, fixed effects first
-        fixed_formula <- reformulate(log_preds, response = paste0("log", responseVar))
+        fixed_formula <- reformulate(preds, response = responseVar)
         ###  run the model
         ###  first fixed effects
         fixed_model <- lm(fixed_formula, data = data_clean)
-        mods <- append(mods,list(fixed_model))
         model <- ModelME <- model+1
+        ###  predict on the model
+        predsF <- predsF |> left_join(data.frame(ID=data_clean$ID,pred=predict(fixed_model,newdata=data_clean)),by=join_by(ID))
+        mods <- append(mods,list(fixed_model))
         names(mods)[length(mods)] <- paste0(model,".Fixed")
         ###  get summary stats
         fixed_summary <- summary(fixed_model)
@@ -65,7 +63,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         AIC_fixed <- AIC(fixed_model)
         BIC_fixed <- BIC(fixed_model)
         RMSE_fixed <- sqrt(mean(resid(fixed_model)^2))
-        RMSE_fixed_std <-  RMSE_fixed/mean(data_clean[,paste0("log", responseVar)],na.rm=TRUE)
+        #RMSE_fixed_btrans <- sqrt(mean((predsF[,responsevar]-predsF$pred_btrans)^2))
+        #RMSE_fixed_std <-  RMSE_fixed/mean(data_clean[,paste0("log", responseVar)],na.rm=TRUE)
         RMSE_CVmean_fixed <-  mean(sqrt(cv$details$criterion),na.rm=TRUE)
         RMSE_CVsd_fixed <-  sd(sqrt(cv$details$criterion),na.rm=TRUE)
         R2_fixed <- fixed_summary$r.squared
@@ -74,8 +73,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         r2_part_fixed <- r2_part
         sig_fixed <-  sigma(fixed_model)
         if (k>1){VIF_fixed <- car::vif(fixed_model)}else{VIF_fixed <- NA}
-        ###  predict on the model
-        predsF <- predsF |> left_join(data.frame(ID=data_clean$ID,pred=predict(fixed_model,newdata=data_clean)),by=join_by(ID))
+
         ###  get the coefficient names
         nmsf <- c(names(coef(fixed_model)),rep(names(coef(fixed_model))[-1],2))
         ###  make the coefficent names more generic
@@ -96,7 +94,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         mixed_formula_int_slope <- as.formula(paste0(
           deparse(fixed_formula,width.cutoff = 100L),
           " + ",
-          paste0("(",log_preds,"|", rep(groupVars,length(preds)), ")", collapse = " + ")
+          paste0("(",preds,"|", rep(groupVars,length(preds)), ")", collapse = " + ")
         ))
         ###  now add in random effects on individual grouping variables
         for (m in 1:length(groupVars)){
@@ -110,7 +108,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
                                             as.formula(paste0(
                                               deparse(fixed_formula,width.cutoff = 100L),
                                               " + ",
-                                              paste0("(",log_preds,"|", rep(groupVars[m],length(preds)), ")", collapse = " + "))))
+                                              paste0("(",preds,"|", rep(groupVars[m],length(preds)), ")", collapse = " + "))))
           names(mixed_formula_int_slope)[length(mixed_formula_int_slope)] <- paste0("MixedIntSlope_",groupVars[m])
         }
         names(mixed_formula_int)[1] <- paste0("MixedInt_",paste(groupVars,collapse="&"))
@@ -124,7 +122,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
           if (mm==1){ME = paste(groupVars,collapse="&")}else{ME = groupVars[mm-1]}
           ##  Fit mixed model
           ##  create lists to hold coefficients and model metrics
-          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_mixed_std<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC<-ICC2 <- VIF_mixed <- sings_mixed <-r2_part_mixed<- list()
+          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC<-ICC2 <- VIF_mixed <- sings_mixed <-r2_part_mixed<- list()
           for (M in 1:length(MMods)){
             ###  fit the model, if possible given the data
             #ModelME <- ModelME+0.1
@@ -137,6 +135,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               sings_mixed <- append(sings_mixed,isSingular(mixed_model))
               ###  first the predictions
               predsMM <- predsMM |> left_join(data.frame(ID=data_clean$ID,pred=predict(mixed_model,newdata=data_clean)),by=join_by(ID))
+              pred_btrans = 10^(predsMM$pred+((summary(mixed_model)$sigma^2)/2))
               ####  caret offers more control but is not optimal for me models
               cv <- cv::cv(mixed_model, data_clean, k=10, details=TRUE)
               mods <- append(mods,list(mixed_model))
@@ -146,7 +145,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               AIC_mixed <- append(AIC_mixed,AIC(mixed_model))
               BIC_mixed <- append(BIC_mixed,BIC(mixed_model))
               RMSE_mixed <- append(RMSE_mixed ,sqrt(mean(resid(mixed_model)^2)))
-              RMSE_mixed_std = append(RMSE_mixed_std,sqrt(mean(resid(mixed_model)^2))/mean(data_clean[, paste0("log", responseVar)],na.rm=TRUE))
+              #RMSE_btrans_mixed <- append(RMSE_btrans_mixed ,sqrt(mean((predsMM[,responsvar]-pred_btrans)^2,na.rm=TRUE)))
+              #RMSE_mixed_std = append(RMSE_mixed_std,sqrt(mean(resid(mixed_model)^2))/mean(data_clean[, paste0("log", responseVar)],na.rm=TRUE))
               RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed , mean(sqrt(cv$details$criterion),na.rm=TRUE))
               RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed , sd(sqrt(cv$details$criterion),na.rm=TRUE))
               if (k>1){VIF_mixed <- car::vif(mixed_model)}else{VIF_mixed <-NA}
@@ -167,15 +167,16 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               AIC_mixed <- append(AIC_mixed,NA)
               BIC_mixed <- append(BIC_mixed,NA)
               RMSE_mixed <- append(RMSE_mixed,NA)
-              RMSE_mixed_std <- append(RMSE_mixed_std,NA)
+              #RMSE_mixed_btrans <- append(RMSE_mixed_btrans,NA)
+              #RMSE_mixed_std <- append(RMSE_mixed_std,NA)
               RMSE_CVmean_mixed <- append(RMSE_CVmean_mixed,NA)
               RMSE_CVsd_mixed <- append(RMSE_CVsd_mixed,NA)
               ICC <- append(ICC,NA)
               ICC2 <- append(ICC2,NA)
               VIF_mixed <- append(VIF_mixed,NA)
               r2_part_mixed <- append(r2_part_mixed ,NA)
-              coefs_mixed[[M]] <- setNames(rep(NA, length(log_preds) + 2),
-                                           c("(Intercept)", log_preds))
+              coefs_mixed[[M]] <- setNames(rep(NA, length(preds) + 2),
+                                           c("(Intercept)", preds))
             }
           }
             result_row <- tibble(
@@ -187,12 +188,13 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             AIC_Fixed = AIC_fixed,
             BIC_Fixed = BIC_fixed,
             RMSE_Fixed = RMSE_fixed,
-            RMSE.Std_Fixed = RMSE_fixed_std,
+           # RMSE_lin_fixed=RMSE_fixed_btrans,
+            #RMSE.Std_Fixed = RMSE_fixed_std,
             RMSE.CVmean_Fixed = RMSE_CVmean_fixed,
             RMSE.CVsd_Fixed = RMSE_CVsd_fixed,
           ) |> mutate(MixedEffects=ME) |>
-            bind_cols(as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_mixed_std,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
-                                             paste0(rep(c("Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.Std_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
+            bind_cols(as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
+                                             paste0(rep(c("Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
                                                     c("Int","IntSlope")))))
             coef_row <- tibble(
             VarGroup = varGroup,
@@ -210,8 +212,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
   }
   #modnamesF <- paste0("mod",(ncol(data_clean)+1):ncol(predsF)-ncol(data_clean),"_")
   #modnamesMM <- paste0("mod",rep((ncol(data_clean)+1):ncol(predsF)-ncol(data_clean),each=6),"_",mmmods)
-  names(predsF)[(ncol(data_clean)+1):ncol(predsF)] <- paste0("preds_",grep("Fixed",names(mods),value=TRUE))
-  names(predsMM)[(ncol(data_clean)+1):ncol(predsMM)] <- paste0("preds_",grep("Fixed",names(mods),value=TRUE,invert=TRUE))
+  names(predsF)[grep("pred.",names(predsF))] <- paste0("preds_",grep("Fixed",names(mods),value=TRUE))
+  names(predsMM)[grep("pred.",names(predsMM))] <- paste0("preds_",grep("Fixed",names(mods),value=TRUE,invert=TRUE))
  # names(mods) <- lapply(seq(1,length(modnamesF)),function(i,nmsF,nmsMM){
    # mmseq <- seq(1,length(nmsMM),by=6)
    # namesnew <- c(nmsF[i],nmsMM[mmseq[i]:(mmseq[i]+5)])
@@ -238,6 +240,9 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     relocate(any_of(contains("Intercept")),.after=NumPredictors) |>
     relocate(any_of(contains(c("VIF","Rsq"))),.after=last_col())|>
     relocate(any_of(contains("ModelN")),.after=Model)
+  if (!varorder) coef_df <- coef_df |> select(-contains("Rsq.var"))
+
+
   return(list(results=results_df,coefs=coef_df,predsF=predsF,predsMM=predsMM,mods=mods))
 }
 
