@@ -676,7 +676,7 @@ checks <- lapply(unique(performance_ranked$ModelName),function(x){
 })
 ```
 
-```{r, echo=FALSE, out.width="100%",warning=FALSE,message=FALSE,fig.cap="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository."}
+```{r, echo=FALSE, out.width="100%",warning=FALSE,message=FALSE,fig.cap="An example of the assumptions plots for model '20.MixedInt_Species&Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository."}
 tfile <- tempfile(fileext = ".png")
 png <- pdftools::pdf_convert("Assumptions/20.MixedInt_Species&Site-model_checks.pdf",format="png",filenames=tfile,verbose=FALSE)
 knitr::include_graphics(tfile )
