@@ -17,3 +17,5 @@ Imports:
     lme4,
     performance,
     tibble
+Depends: 
+    R (>= 3.5)

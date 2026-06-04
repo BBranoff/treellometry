@@ -24,9 +24,11 @@ remotes::install_github("BBranoff/treellometry@ecoinf")
 library(treellometry)
 library(dplyr)
 ```
-```{r load-data,results='hide',echo=FALSE,message=FALSE}
+```{r load-data,results='hide',echo=FALSE,message=FALSE,warning=FALSE}
 library(dplyr)
 library(ggplot2)
+library(sf)
+library(patchwork)
 devtools::load_all()
 options(width = 1000)
 #saveRDS(list(mods=mods,mods_scaled=mods_scaled,mods5cm=mods5cm,mods5cm_scaled=mods5cm_scaled),"E:\\OneDrive - USDA\\Chuck ME models\\R Package\\mods.rds")
@@ -45,16 +47,30 @@ dat[[paste0("log", responsevar)]] <- log(dat[[responsevar]])
 for (var in predictorvars) {
   dat[[paste0("log", var)]] <- log(dat[[var]])
 }
-dat_scaled <- dat |>
-      mutate( across(contains(predictorvars),function(x) scale(x)[,1]))
 ###  the random effect variables
 groupvars = c("Species", "Site")
 ```
+```{r Fig1,results='hide',echo=FALSE,message=FALSE,warning=FALSE,fig.height=5, message=FALSE,warning=FALSE,fig.cap="Fig. 1 Plot locations for the 10 studies considered in our analysis. Location symbol color and the color bar correspondscorrespond the maximum single tree ABG (kg) at each site."}
+ggplot(mangroves |> 
+         group_by(Site)|>
+         summarise(AGB.kg=max(AGB.kg,na.rm=TRUE),Long=mean(Long),Lat=mean(Lat))|>
+         mutate(Long=if_else(Site=="San Juan",Long+2,Long))|>
+         st_as_sf(coords=c("Long","Lat"),crs=4326))+
+  geom_sf(data=rnaturalearth::ne_coastline())+
+  geom_sf(pch=21,size=3,aes(fill=AGB.kg))+
+  scale_fill_viridis_b()+
+  geom_sf_text(aes(label =Site),position=position_jitter(height=4))+
+  ylim(-25,40)+xlim(-95,10)+
+  theme_bw()+
+  theme(axis.title = element_blank())
+```
 
-With the library successfully loaded, the following methods will demonstrate the workflow documented in the above publication. The first steps are to create the composite variables (product of variables). These are meant to roughly represent tree form (volume) and are commonly used in allometric modelling because two allometric covariables are likely to be correlated, which destabilizes estimates in  multivariate models. Creating a composite variable eliminates this issue, although it does introduce interpretation considerations, as the product of variables isn’t always directly relatable to tree form.
+With the library successfully loaded, the following methods will demonstrate the workflow documented in the above publication. 
+The first steps are to create the composite variables (product of variables). These are meant to roughly represent tree form (volume) and are commonly used in allometric modelling because two allometric covariables are likely to be correlated, which destabilizes estimates in  multivariate models. Creating a composite variable eliminates this issue, although it does introduce interpretation considerations, as the product of variables isn’t always directly relatable to tree form.
 Here, we also set the response variable, which in our case is always aboveground biomass, as well as the various predictor variables. We also establish the grouping variables, species and location. These will be used to model random effects, which aims to investigate a central premise of this publication, that species and location are significant and substantial in influencing biomass predictions from allometric measurements. In short, mixed effects models will 'partition' the variance in biomass associated with individual species and locations and then attempt to model the remaining variance based on the allometric predictor variables. This is very useful in determining how much of the biomass is species or location specific, and how much depends primarily on the allometric measurements. If a significant and substantial portion of the variance in biomass can be attributed to these grouping variables, that may justify the harvest of local trees to determine location and species specific allometric models. On the other hand, if the mixed effects models determine that an "insubstantial" portion of the variance is due to these grouping variables, harvesting local trees is probably not warranted and the use of 'global' models that apply to all species and all locations is 'good enough'. Ultimately, that decision lies with local managers and scientists, but here we outline a statistical workflow to help make that informed decision. 
 For a more detailed outline of mixed-effects modelling in ecology, see [Harrison et al. (2018)](https://doi.org/10.7717/peerj.4794).
 
+Then, we run an important transformation on the data, a log transformation of all response and predictor variables, which is very common in allometry (see [Gingerich (2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). It is important to note that transformations fundamentally change model coefficients and their interpretation of the original data. So it is important to note here that coefficients and performance metrics for this publication are reported on models from the log transformed data. Thus, a slope and intercept term reported from this workflow will represent the log of variable X and the log of variable Y, and predictions will represent the log of variable Y (biomass, in our case). In a later section we demonstrate how to back-transform predictions to provide a linear (non-log) representation of biomass and the Root Mean Square Error (RMSE).     
 
 ```{r prep-data,eval=FALSE,warning=FALSE,message=FALSE}
 data("mangroves")
@@ -82,23 +98,23 @@ mods <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars)
 mods5cm <- explore_allom_models(mangroves|>filter(DBH.cm>=5),responsevar,predictorvars,groupvars)
 ```
 
-With the data open, can first examine the above discussed variance. Below is a general visual of the variable distributions. These 'kernel density estimates' or distributions are a representation of the probability density of any given value within the data. Tall and skinny distributions have relatively little variance compared to short and flat distributions. These visualizations help understand how the data are distributed among the groups and how the individual groups fit into the overall 'population', which is an underlying basis for testing in mixed effects models.  
+As the models run, we can first examine the above discussed variance. Below is a general visual of the variable distributions. These 'kernel density estimates' or distributions are a representation of the probability density of any given value within the data. Tall and skinny distributions have relatively little variance compared to short and flat distributions. These visualizations help understand how the data are distributed among the groups and how the individual groups fit into the overall 'population', which is an underlying basis for testing in mixed effects models.  
 
-Notice how the data is much more spread out among sites than species. This suggests site level variability in mangrove tree allometry is more than that at the species level.
+Notice how the data is much more spread out among sites than species. This suggests site level variability in mangrove tree allometry is more than that at the species level. Also notice that all variables are on the same general scale ([-3,3]), which means we dont necessarily have to scale them to the same order of magnitude. This would be important for mixed effects models utilizing predictor variables from very different orders of magnitude.
 
-```{r pdf,fig.height=5, message=FALSE,warning=FALSE,fig.cap="Fig. 1 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three"}
-ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
+```{r pdf,fig.height=8, echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Fig.2 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three"}
+(ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
          mutate(value=log10(value),
                 Site=factor(Site,levels=c("Biscayne","Benin","San Juan","Bertioga","Everglades","Louisiana","Guadeloupe","Guaratiba","French Guiana","Puerto Rico"))))+
          geom_density(aes(x=value,fill=Site),alpha=0.5)+
   scale_fill_manual(values=c("#B283BA","#FFE76D","#FE8F89","#95D8F5","#66AAD7","#A2B4FE","#E89875","#C67282","#ADCD82","#F4D078"))+
   facet_wrap(~name)+
-  theme_classic()
-ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
+  theme_classic())/
+(ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
          mutate(value=log10(value)))+
          geom_density(aes(x=value,fill=Species),alpha=0.5)+
   facet_wrap(~name)+
-  theme_classic()
+  theme_classic())
       
 ```
 
@@ -106,29 +122,7 @@ ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiam
 ## A look inside 'explore_allom_models()'
 The above use of the 'explore_allom_models()' accomplishes the bulk of the analysis for this publication, which includes fitting models of biomass from various combinations of predictor variables and fixed and mixed effects, as well as retrieving model coefficients and fitness metrics used in model evaluation. Rather than leaving all of that in the black box of the function, here we break down the internal steps of 'explore_allom_models()' to provide more insight.
 
-The first step is to check to make sure inputs are valid and then to run two important transformations on the data. The first is a log transformation of all response and predictor variables, which is very common in allometry (see [Gingerich (2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). The second is a scaling that is important for mixed-effects model performance and interpretability [Harrison et al. (2018)](https://doi.org/10.7717/peerj.4794). In this case, each value is reduced by the variable's mean and than divided by it's standard deviation. This creates proportionally equivalent values of all variables that are on the same scale, reducing bias from predictors whose values are orders of magnitude in difference. This is primarily done to more easily compare performance across models, but it is important to note that transformations fundamentally change model coefficients and their interpretation of the original data. For this reason, coefficients for this publication are reported on models from the non-scaled, but still log transformed data, while performance metric comparisons are done on models from scaled and log transformed variables. Thus, a slope and intercept term reported from this workflow will represent the log of variable X and the log of variable Y, and predictions will represent the log of variable Y (biomass, in our case). In a later section we demonstrate how to back-transform predictions to provide a linear (non-log) representation of biomass.     
-
-```{r explore_allom_models1, eval=FALSE}
-  ##  check inputs
-  if (responseVar %in% predictorVars) stop("Response variable found in predictor variables")
-  # Log-transform response and predictors
-  dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
-  for (var in predictorVars) {
-    dat[[paste0("log", var)]] <- log(dat[[var]])
-  }
-  if (scle==TRUE){
-    dat <- dat |>
-      mutate( across(contains(predictorVars),function(x) scale(x)[,1]))#,.names = "{paste0(col, '_scaled')}"))
-  }
-  dat <- dat |> mutate( ID=1:n())
-  predsMM <- predsF <- dat
-  results <- list()
-  coefs <- list()
-  mods <- list()
-  varGroup=model=0
-```
-
-Next, we begin to loop through each of the predictor variables and build and fit models with those variables. Here, we use k to denote the number of predictor variables in the equation. A k of 1 is a simple regression and a k greater than one is multiple regression with more than one predictor. Two important exclusions are happening below. The first is that the 'WoodDensity' variable is not included in simple regression because its values are generalized for each species and are not location specific, thus it does not meaningfully influence biomass for individual trees. Second, is that composite variables are not included in multiple regression because they are already a combination of multiple variables and it simply doesnt make sense in our case to include the influence of a variable twice in the same model.   
+First, we begin to loop through each of the predictor variables and build and fit models with those variables. Here, we use k to denote the number of predictor variables in the equation. A k of 1 is a simple regression and a k greater than one is multiple regression with more than one predictor. Two important exclusions are happening below. The first is that the 'WoodDensity' variable is not included in simple regression because its values are generalized for each species and are not location specific, thus it does not meaningfully influence biomass for individual trees. Second, is that composite variables are not included in multiple regression because they are already a combination of multiple variables and it simply doesnt make sense in our case to include the influence of a variable twice in the same model.   
 ```{r explore_allom_models2, eval=FALSE}
 for (k in 1:length(predictorVars)) {
     if (k==1){
@@ -444,10 +438,13 @@ RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
   preds_lin <- exp(preds_log) * exp((sigma_val^2) / 2)
   # Calculate back-transformed RMSE
   RMSE_lin <- sqrt(mean((resp - preds_lin)^2, na.rm = TRUE))
+  RMdSE_lin <- sqrt(median((resp - preds_lin)^2, na.rm = TRUE))
   # calculate relative RMSE using the mean AGB for the model
   meanAGB <- mean(resp ,na.rm=TRUE)
+  medianAGB <- median(resp ,na.rm=TRUE)
   # Return data frame
-  data.frame(Model=Model,RMSE = RMSE, RMSE_lin = RMSE_lin, meanAGB=meanAGB,RelRMSE_lin=100*RMSE_lin/meanAGB)
+  data.frame(Model=Model,RMSE = RMSE, RMSE_lin = RMSE_lin,RMdSE_lin=RMdSE_lin, meanAGB=meanAGB,medianAGB=medianAGB,RelRMSE_lin=100*RMSE_lin/meanAGB,
+             RelRMdSE_lin=100*RMdSE_lin/medianAGB)
 })
 RMSE_lin <- do.call(rbind,RMSE_lin)
 ##  pivot the table and categorize metrics and models
@@ -462,13 +459,13 @@ performance_long <- performance %>%
 ##  add in the linear RMSE values
 performance_long <- bind_rows(performance_long,
                           performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,MixedEffects,Effects,ModelName) %>% distinct()%>%
-  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMSE_log","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
+  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format
 performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>tidyr::fill(everything(),.direction = "down")|>filter(!is.na(MixedEffects))|>
-  relocate(RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
-  relocate(RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
-  relocate(RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
+  relocate(RMdSE_lin_Fixed,RelRMdSE_lin_Fixed,RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
+  relocate(RMdSE_lin_MixedInt,RelRMdSE_lin_MixedInt,RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
+  relocate(RMdSE_lin_MixedIntSlope,RelRMdSE_lin_MixedIntSlope,RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
 
 ##  rank the models based on their metrics
 performance_ranked <- performance_long
@@ -497,9 +494,9 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
   ##  These suggest random effects are either minimal (zero) or there is not enough information to compute
-  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
   ###  now create a master global rank based on the means
@@ -527,15 +524,17 @@ coef_long <- coef %>%
 coef_wide <- coef_long %>%
   tidyr::pivot_wider(names_from=Coefficient)%>%
   relocate(ModelN,Effects,.before=MixedEffects)
+
 performance_ranked <- performance_ranked %>% 
   left_join(coef_wide%>%select(ModelN,MixedEffects,Effects,maxVIF),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))%>%
   relocate(maxVIF,.after=value_ICC)|>
-  relocate(value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
+  relocate(value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
+
 coefs_filtered <- coef_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects)) %>%  relocate(ModelN)
 coefs_ranked <- coefs_filtered[match(paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects),
                                        paste0(coefs_filtered$ModelN,coefs_filtered$MixedEffects,coefs_filtered$Effects)), ]
-performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
+performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
   left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 ```
 ```{r save-tables,echo=FALSE,message=FALSE,warning=FALSE}
@@ -563,10 +562,13 @@ RMSE5cm_lin <- lapply(seq_along(mods5cm$mods), function(x) {
   preds_lin <- exp(preds_log) * exp((sigma_val^2) / 2)
   # Calculate back-transformed RMSE
   RMSE_lin <- sqrt(mean((resp - preds_lin)^2, na.rm = TRUE))
+  RMdSE_lin <- sqrt(median((resp - preds_lin)^2, na.rm = TRUE))
   # calculate relative RMSE using the mean AGB for the model
   meanAGB <- mean(resp ,na.rm=TRUE)
+  medianAGB <- median(resp ,na.rm=TRUE)
   # Return data frame
-  data.frame(Model=Model, RMSE_lin = RMSE_lin, meanAGB=meanAGB,RelRMSE_lin=100*RMSE_lin/meanAGB)
+  data.frame(Model=Model, RMSE_lin = RMSE_lin, RMdSE_lin= RMdSE_lin, meanAGB=meanAGB,medianAGB=medianAGB,RelRMSE_lin=100*RMSE_lin/meanAGB,
+             RelRMdSE_lin=100*RMdSE_lin/medianAGB)
 })
 RMSE5cm_lin <- do.call(rbind,RMSE5cm_lin)
 RMSE5cm_wide <- RMSE5cm_lin|>
@@ -584,13 +586,13 @@ performance5cm_long <- performance5cm %>%
 ##  add in the linear RMSE values
 performance5cm_long <- bind_rows(performance5cm_long,
                           performance5cm_long %>% select(VarGroup,Model,ModelN,NumPredictors,MixedEffects,Effects,ModelName) %>% distinct()%>%
-  left_join(RMSE5cm_lin %>% select(-meanAGB) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMSE_log","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
+  left_join(RMSE5cm_lin %>% select(-meanAGB) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format
 performance5cm_wide <- performance5cm_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>tidyr::fill(everything(),.direction = "down")|>filter(!is.na(MixedEffects))|>
-  relocate(RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
-  relocate(RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
-  relocate(RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
+  relocate(RMdSE_lin_Fixed,RelRMdSE_lin_Fixed,RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
+  relocate(RMdSE_lin_MixedInt,RelRMdSE_lin_MixedInt,RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
+  relocate(RMdSE_lin_MixedIntSlope,RelRMdSE_lin_MixedIntSlope,RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
 
 performance5cm_ranked <- performance5cm_long
 performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed"),
@@ -607,9 +609,9 @@ performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed")
   ## remove singular ranking
   select(-contains("rank_Singular"))%>%
   rowwise()%>%
-  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_Sig,globalrank_RMSE_log.CVsd)),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,globalrank_RMSE_log.CVsd)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
   mutate(masterrank_global=rank(globalranks_mean)) %>%
@@ -633,15 +635,17 @@ coef5cm_long <- coef5cm %>%
 coef5cm_wide <- coef5cm_long %>%
   tidyr::pivot_wider(names_from=Coefficient)%>%
   relocate(ModelN,Effects,.before=MixedEffects)
+
 performance5cm_ranked <- performance5cm_ranked %>% 
   left_join(coef5cm_wide%>%select(ModelN,MixedEffects,Effects,maxVIF),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))%>%
   relocate(maxVIF,.after=value_ICC)|>
-  relocate(value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
+ relocate(value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_lin,value_RelRMSE_lin,.before=value_RMSE_log)
+
 coefs5cm_ranked <- coef5cm_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance5cm_ranked$ModelN,performance5cm_ranked$MixedEffects,performance5cm_ranked$Effects)) %>%  relocate(ModelN)
 coefs5cm_ranked <- coefs5cm_ranked[match(paste0(performance5cm_ranked$ModelN,performance5cm_ranked$MixedEffects,performance5cm_ranked$Effects),
                                        paste0(coefs5cm_ranked$ModelN,coefs5cm_ranked$MixedEffects,coefs5cm_ranked$Effects)), ]
-performance5cm_coeffs_combined <- performance5cm_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
+performance5cm_coeffs_combined <- performance5cm_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
   left_join(coef5cm_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 
 
@@ -665,7 +669,7 @@ We now have a dataset (performance_ranked) with the top performing model from ea
 We now want to test the assumptions of each model. Again, we are looking for a reasonable way to evaluate a large number of models. Using the convenient 'check_model()' function from the performance package, we can produce excellent visualizations for pertinent assumptions. These are stored in the 'Assumptions' folder of the repository. Upon examining the graphics, it seems many of the top models do a good to decent job of meeting the primary regression model assumptions. Again, because these assumptions have varying consequences depending on the objectives of the model (predictions versus comparisons) it is the user's responsibility to scrutinize these assumption tests according to their objectives. The results of the below are included the "Assumptions" folder and below is one example from the 'top' model.
 ```{r model-assumptions,eval=FALSE,message=FALSE,warning=FALSE}
 ######  testing assumptions on the top ranked models
-checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
+checks <- lapply(unique(performance_ranked$ModelName),function(x){
   pdf(file = paste0("./Assumptions/",x,"-model_checks.pdf"), width = 9, height = 11)
   print(performance::check_model(mods$mods[[x]]))
   dev.off()

@@ -50,7 +50,14 @@ library(treellometry)
 library(dplyr)
 ```
 
-    ## Warning: package 'ggplot2' was built under R version 4.5.3
+<figure>
+<img src="README_files/figure-gfm/Fig1-1.png"
+alt="Fig. 1 Plot locations for the 10 studies considered in our analysis. Location symbol color and the color bar correspondscorrespond the maximum single tree ABG (kg) at each site." />
+<figcaption aria-hidden="true">Fig. 1 Plot locations for the 10 studies
+considered in our analysis. Location symbol color and the color bar
+correspondscorrespond the maximum single tree ABG (kg) at each
+site.</figcaption>
+</figure>
 
 With the library successfully loaded, the following methods will
 demonstrate the workflow documented in the above publication. The first
@@ -85,6 +92,22 @@ statistical workflow to help make that informed decision. For a more
 detailed outline of mixed-effects modelling in ecology, see [Harrison et
 al. (2018)](https://doi.org/10.7717/peerj.4794).
 
+Then, we run an important transformation on the data, a log
+transformation of all response and predictor variables, which is very
+common in allometry (see [Gingerich
+(2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and
+Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). It is
+important to note that transformations fundamentally change model
+coefficients and their interpretation of the original data. So it is
+important to note here that coefficients and performance metrics for
+this publication are reported on models from the log transformed data.
+Thus, a slope and intercept term reported from this workflow will
+represent the log of variable X and the log of variable Y, and
+predictions will represent the log of variable Y (biomass, in our case).
+In a later section we demonstrate how to back-transform predictions to
+provide a linear (non-log) representation of biomass and the Root Mean
+Square Error (RMSE).
+
 ``` r
 data("mangroves")
 
@@ -111,7 +134,7 @@ mods <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars)
 mods5cm <- explore_allom_models(mangroves|>filter(DBH.cm>=5),responsevar,predictorvars,groupvars)
 ```
 
-With the data open, can first examine the above discussed variance.
+As the models run, we can first examine the above discussed variance.
 Below is a general visual of the variable distributions. These ‘kernel
 density estimates’ or distributions are a representation of the
 probability density of any given value within the data. Tall and skinny
@@ -123,39 +146,31 @@ effects models.
 
 Notice how the data is much more spread out among sites than species.
 This suggests site level variability in mangrove tree allometry is more
-than that at the species level.
+than that at the species level. Also notice that all variables are on
+the same general scale (\[-3,3\]), which means we dont necessarily have
+to scale them to the same order of magnitude. This would be important
+for mixed effects models utilizing predictor variables from very
+different orders of magnitude.
 
 ``` r
-ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
+(ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
          mutate(value=log10(value),
                 Site=factor(Site,levels=c("Biscayne","Benin","San Juan","Bertioga","Everglades","Louisiana","Guadeloupe","Guaratiba","French Guiana","Puerto Rico"))))+
          geom_density(aes(x=value,fill=Site),alpha=0.5)+
   scale_fill_manual(values=c("#B283BA","#FFE76D","#FE8F89","#95D8F5","#66AAD7","#A2B4FE","#E89875","#C67282","#ADCD82","#F4D078"))+
   facet_wrap(~name)+
-  theme_classic()
+  theme_classic())/
+(ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
+         mutate(value=log10(value)))+
+         geom_density(aes(x=value,fill=Species),alpha=0.5)+
+  facet_wrap(~name)+
+  theme_classic())
 ```
 
 <figure>
 <img src="README_files/figure-gfm/pdf-1.png"
-alt="Fig. 1 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three" />
-<figcaption aria-hidden="true">Fig. 1 Distributions of the predictor
-variables. Notice the greater variance between locations, compared to
-that between species. Wood density is not shown as it was species
-specific and thus only composed of three</figcaption>
-</figure>
-
-``` r
-ggplot(mangroves |> tidyr::pivot_longer(cols=c(AGB.kg,DBH.cm,Height.m,CanopyDiameter.m))|>
-         mutate(value=log10(value)))+
-         geom_density(aes(x=value,fill=Species),alpha=0.5)+
-  facet_wrap(~name)+
-  theme_classic()
-```
-
-<figure>
-<img src="README_files/figure-gfm/pdf-2.png"
-alt="Fig. 1 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three" />
-<figcaption aria-hidden="true">Fig. 1 Distributions of the predictor
+alt="Fig.2 Distributions of the predictor variables. Notice the greater variance between locations, compared to that between species. Wood density is not shown as it was species specific and thus only composed of three" />
+<figcaption aria-hidden="true">Fig.2 Distributions of the predictor
 variables. Notice the greater variance between locations, compared to
 that between species. Wood density is not shown as it was species
 specific and thus only composed of three</figcaption>
@@ -171,63 +186,18 @@ metrics used in model evaluation. Rather than leaving all of that in the
 black box of the function, here we break down the internal steps of
 ‘explore_allom_models()’ to provide more insight.
 
-The first step is to check to make sure inputs are valid and then to run
-two important transformations on the data. The first is a log
-transformation of all response and predictor variables, which is very
-common in allometry (see [Gingerich
-(2000)](https://doi.org/10.1006/jtbi.2000.2008), and [Kerkhoff and
-Enquist (2009)](https://doi.org/10.1016/j.jtbi.2008.12.026)). The second
-is a scaling that is important for mixed-effects model performance and
-interpretability [Harrison et
-al. (2018)](https://doi.org/10.7717/peerj.4794). In this case, each
-value is reduced by the variable’s mean and than divided by it’s
-standard deviation. This creates proportionally equivalent values of all
-variables that are on the same scale, reducing bias from predictors
-whose values are orders of magnitude in difference. This is primarily
-done to more easily compare performance across models, but it is
-important to note that transformations fundamentally change model
-coefficients and their interpretation of the original data. For this
-reason, coefficients for this publication are reported on models from
-the non-scaled, but still log transformed data, while performance metric
-comparisons are done on models from scaled and log transformed
-variables. Thus, a slope and intercept term reported from this workflow
-will represent the log of variable X and the log of variable Y, and
-predictions will represent the log of variable Y (biomass, in our case).
-In a later section we demonstrate how to back-transform predictions to
-provide a linear (non-log) representation of biomass.
-
-``` r
-  ##  check inputs
-  if (responseVar %in% predictorVars) stop("Response variable found in predictor variables")
-  # Log-transform response and predictors
-  dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
-  for (var in predictorVars) {
-    dat[[paste0("log", var)]] <- log(dat[[var]])
-  }
-  if (scle==TRUE){
-    dat <- dat |>
-      mutate( across(contains(predictorVars),function(x) scale(x)[,1]))#,.names = "{paste0(col, '_scaled')}"))
-  }
-  dat <- dat |> mutate( ID=1:n())
-  predsMM <- predsF <- dat
-  results <- list()
-  coefs <- list()
-  mods <- list()
-  varGroup=model=0
-```
-
-Next, we begin to loop through each of the predictor variables and build
-and fit models with those variables. Here, we use k to denote the number
-of predictor variables in the equation. A k of 1 is a simple regression
-and a k greater than one is multiple regression with more than one
-predictor. Two important exclusions are happening below. The first is
-that the ‘WoodDensity’ variable is not included in simple regression
-because its values are generalized for each species and are not location
-specific, thus it does not meaningfully influence biomass for individual
-trees. Second, is that composite variables are not included in multiple
-regression because they are already a combination of multiple variables
-and it simply doesnt make sense in our case to include the influence of
-a variable twice in the same model.
+First, we begin to loop through each of the predictor variables and
+build and fit models with those variables. Here, we use k to denote the
+number of predictor variables in the equation. A k of 1 is a simple
+regression and a k greater than one is multiple regression with more
+than one predictor. Two important exclusions are happening below. The
+first is that the ‘WoodDensity’ variable is not included in simple
+regression because its values are generalized for each species and are
+not location specific, thus it does not meaningfully influence biomass
+for individual trees. Second, is that composite variables are not
+included in multiple regression because they are already a combination
+of multiple variables and it simply doesnt make sense in our case to
+include the influence of a variable twice in the same model.
 
 ``` r
 for (k in 1:length(predictorVars)) {
@@ -326,7 +296,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 865985
+    ## R RNG seed set to 21894
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -716,7 +686,7 @@ checks <- lapply(unique(performance_rank_filtered$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpSCGcYh\file5ae4116a4198.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpYN1TjB\file7a40222c2003.png" alt="Fig. 1 An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 Fig. 1 An example of the assumptions plots for model
 ‘20.MixedInt_Species&Site’. Each panel is a visual representation of the
