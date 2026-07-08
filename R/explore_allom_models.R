@@ -45,7 +45,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         preds <- perms[p,]
         #log_preds <- paste0("log", preds)#,"_scaled")
         ###  remove missing values
-        data_clean <- dat |> filter(across(c(preds,responseVar), ~ !is.na(.)))
+        data_clean <- dat |> filter(if_all(c(preds,responseVar), ~ !is.na(.)))
         ###  create the model formulas, fixed effects first
         fixed_formula <- reformulate(preds, response = responseVar)
         ###  run the model
