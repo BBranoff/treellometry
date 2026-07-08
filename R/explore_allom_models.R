@@ -68,7 +68,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         RMSE_CVmean_fixed <-  mean(sqrt(cv$details$criterion),na.rm=TRUE)
         RMSE_CVsd_fixed <-  sd(sqrt(cv$details$criterion),na.rm=TRUE)
         R2_fixed <- fixed_summary$r.squared
-        r2_part <- r2beta(fixed_model)[-1,]
+        r2_part <- r2glmm::r2beta(fixed_model)[-1,]
         r2_part <- setNames(r2_part[,'Rsq'],r2_part[,1])
         r2_part_fixed <- r2_part
         sig_fixed <-  sigma(fixed_model)
@@ -81,7 +81,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
         nmsm <- nmsf
         ###  create a data frame row to hold the coefficients
         ###  this will be added to a growing dataframe of model coefficients
-        fixed_cols <- as_tibble_row(setNames(as.list(c(coef(fixed_model),VIF_fixed,r2_part_fixed)),
+        fixed_cols <- tibble::as_tibble_row(setNames(as.list(c(coef(fixed_model),VIF_fixed,r2_part_fixed)),
                                              paste0(nmsf, "_Fixed")))
         ###  then mixed effects
         ###  random intercept, with all grouping variables
@@ -193,7 +193,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             RMSE.CVmean_Fixed = RMSE_CVmean_fixed,
             RMSE.CVsd_Fixed = RMSE_CVsd_fixed,
           ) |> mutate(MixedEffects=ME) |>
-            bind_cols(as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
+            bind_cols(tibble::as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
                                              paste0(rep(c("Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
                                                     c("Int","IntSlope")))))
             coef_row <- tibble(
@@ -202,7 +202,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             Model = paste(preds, collapse = ", "),
             NumPredictors = length(preds)) |>
             bind_cols(fixed_cols)|>
-            bind_cols(as_tibble_row(setNames(as.list(coefs_mixed),
+            bind_cols(tibble::as_tibble_row(setNames(as.list(coefs_mixed),
                                              paste0(nmsm, "_Mixed",rep(c("Int","IntSlope"),each=length(nmsm))))))
           results[[length(results) + 1]] <- result_row
           coefs[[length(coefs) + 1]] <- coef_row

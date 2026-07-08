@@ -773,11 +773,12 @@ perfs2 %>%
 Another subject of interest involving the performance metrics is how well a model performs given the number of variables it considers. Typically models performs better with more predictors, as each predictor should be able to explain even a small amount of variance, which boosts performance. However, overly complex models are not always better, despite better performance. This is because greater complexity introduces greater potential for error and more difficulty in interpretation, which may not be warranted for only a small increase in predictive performance. The below figure demonstrates that for many performance metrics, there are simpler models that perform nearly as good or better than models with more predictors and more complexity. 
 
 ```{r Fig3,fig.height=10, message=FALSE,warning=FALSE,fig.cap="Fig. 3 Bivariate plots of our six summary statistics (Panels A-F, R2, AIC, BIC, Sigma, the linear RMSE, and the standard deviation of the cross validated log scale RMSE.) as a function of the number of predictors. The different modelling types; fixed effects, mixed intercept and mixed intercept and slope, are denoted with pink, green and blue circles, respectively. The symbols for each number of predictors are offset slightly  (shifted on the x-axis) to increase visibility, e.g. all of the symbols on the far left of Panel A have just a single predictor. Note that while models with more predictors tend to perform better (higher R2, lower everything else), many of the models with 1 or 2 predictors also perform reasonably well. Please consult Tables 3, S1-3 for specific model details."}
-ggplot(performance_long|>filter(Metric %in% c("AIC","BIC","Rsq","RMSE_lin","Sig","RMSE_log.CVsd"))|>
+ggplot(performance_long|>filter(Metric %in% c("AIC","BIC","Rsq","RMSE_lin","RMdSE_lin","Sig","RMSE_log.CVsd"))|>
          mutate(NumPredictors=if_else(Effects=="Fixed",NumPredictors-0.1,if_else(Effects=="MixedIntSlope",NumPredictors+0.1,NumPredictors)),
                 Metric = if_else(Metric=="Rsq","R squared",if_else(Metric=="Sig","Sigma",if_else(Metric=="RMSE_log.CVsd","RMSE CV standard deviation",
-                                                                                                 if_else(Metric=="RMSE_lin","linear RMSE",Metric)))),
-                Metric=factor(Metric,levels=c("R squared","AIC","BIC","Sigma","linear RMSE","RMSE CV standard deviation")),
+                                                                                                 if_else(Metric=="RMSE_lin","linear RMSE",
+                                                                                                         if_else(Metric=="RMdSE_lin","linear RMdSE",Metric))))),
+                Metric=factor(Metric,levels=c("R squared","AIC","BIC","Sigma","linear RMSE","linear RMdSE","RMSE CV standard deviation")),
                 Effects=if_else(Effects=="MixedInt","Mixed Intercept",if_else(Effects=="MixedIntSlope","Mixed Intercept & Slope",Effects))),
        aes(x=NumPredictors,y=value,col=Effects))+
   geom_point(width = 0.2, height = 0)+
@@ -943,17 +944,17 @@ ggplot(performance_ranked,aes(y=value_RMSE_log.CVmean,x=value_RMSE_log)) +
   xlab("RMSE")+ylab("RMSE CV")
 ```
 
-<!-- ```{r predictions,fig.height=5, message=FALSE,warning=FALSE,fig.cap="Fig. X "} -->
-<!-- preds <- cbind(mods$predsF[,c("Species","Site","AGB.kg","logAGB.kg","preds_12.Fixed")], -->
-<!--                data.frame(mods$predsMM[,"preds_12.MixedInt_Species&Site"]))|> -->
-<!--   rename(preds_12.MixedInt_SpeciesandSite=mods.predsMM....preds_12.MixedInt_Species.Site..)|> -->
-<!--   tidyr::pivot_longer(cols=c("preds_12.MixedInt_SpeciesandSite","preds_12.Fixed")) -->
+```{r predictions,fig.height=5, message=FALSE,warning=FALSE,fig.cap="Fig. X "}
+preds <- cbind(mods$predsF[,c("Species","Site","AGB.kg","logAGB.kg","preds_12.Fixed")],
+               data.frame(mods$predsMM[,"preds_12.MixedInt_Species&Site"]))|>
+  rename(preds_12.MixedInt_SpeciesandSite=mods.predsMM....preds_12.MixedInt_Species.Site..)|>
+  tidyr::pivot_longer(cols=c("preds_12.MixedInt_SpeciesandSite","preds_12.Fixed"))
 
-<!-- ggplot(preds,aes(y=exp(logAGB.kg),x=exp(value),col=Site,shape=Species)) + -->
-<!--   geom_point()+ -->
-<!--   geom_abline(intercept=0,slope=1)+ -->
-<!--   facet_wrap(~name) -->
-<!-- ``` -->
+ggplot(preds,aes(y=exp(logAGB.kg),x=exp(value),col=Site,shape=Species)) +
+  geom_point()+
+  geom_abline(intercept=0,slope=1)+
+  facet_wrap(~name)
+```
 
 <!-- ##  random effects-->
 <!-- varcorrs <- lapply(seq_along(modskeep),function(x){if(class(modskeep[[x]])[1]=="lmerMod"){as.data.frame(VarCorr(modskeep[[x]]))|>mutate(Model=names(modskeep)[x])}})-->
