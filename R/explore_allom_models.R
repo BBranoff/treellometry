@@ -122,7 +122,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
           if (mm==1){ME = paste(groupVars,collapse="&")}else{ME = groupVars[mm-1]}
           ##  Fit mixed model
           ##  create lists to hold coefficients and model metrics
-          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC<-ICC2 <- VIF_mixed <- sings_mixed <-r2_part_mixed<- list()
+          R2_mixed <- sigs_mixed <- AIC_mixed <-BIC_mixed<-RMSE_mixed<-RMSE_CVmean_mixed<-RMSE_CVsd_mixed<-coefs_mixed <- ICC<-ICC2 <- VIF_mixed <- sings_mixed <-r2_part_mixed<-nObs_Mixed <- list()
           for (M in 1:length(MMods)){
             ###  fit the model, if possible given the data
             #ModelME <- ModelME+0.1
@@ -157,6 +157,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               r2_part <- r2beta(mixed_model)[-1,]
               r2_part <- setNames(r2_part[,'Rsq'],r2_part[,1])
               r2_part_mixed <- append(r2_part_mixed ,r2_part)
+              nObs_Mixed <- append(nObs_Mixed,nobs(mixed_model))
               coefs_mixed <- append(coefs_mixed,c(fixef(mixed_model,add.dropped=TRUE),VIF_mixed,r2_part))
             } else {
               ####  if the model could not run, set its metrics and coefficients to NA
@@ -175,6 +176,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
               ICC2 <- append(ICC2,NA)
               VIF_mixed <- append(VIF_mixed,NA)
               r2_part_mixed <- append(r2_part_mixed ,NA)
+              nObs_Mixed <- append(nObs_Mixed,NA)
               coefs_mixed[[M]] <- setNames(rep(NA, length(preds) + 2),
                                            c("(Intercept)", preds))
             }
@@ -183,6 +185,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             VarGroup = varGroup,
             Model = paste(preds, collapse = ", "),
             NumPredictors = length(preds),
+            NumObservations = nobs(fixed_model),
             Rsq_Fixed = R2_fixed,
             Sig_Fixed = sig_fixed,
             AIC_Fixed = AIC_fixed,
@@ -193,8 +196,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             RMSE.CVmean_Fixed = RMSE_CVmean_fixed,
             RMSE.CVsd_Fixed = RMSE_CVsd_fixed,
           ) |> mutate(MixedEffects=ME) |>
-            bind_cols(tibble::as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
-                                             paste0(rep(c("Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
+            bind_cols(tibble::as_tibble_row(setNames(as.list(c(nObs_Mixed,sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
+                                             paste0(rep(c("NumObservations_Mixed","Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
                                                     c("Int","IntSlope")))))
             coef_row <- tibble(
             VarGroup = varGroup,
@@ -210,6 +213,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
       }
     }
   }
+  browser()
   #modnamesF <- paste0("mod",(ncol(data_clean)+1):ncol(predsF)-ncol(data_clean),"_")
   #modnamesMM <- paste0("mod",rep((ncol(data_clean)+1):ncol(predsF)-ncol(data_clean),each=6),"_",mmmods)
   names(predsF)[grep("pred.",names(predsF))] <- paste0("preds_",grep("Fixed",names(mods),value=TRUE))
@@ -225,11 +229,11 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     group_by(Model)|>
     mutate(ModelN = cur_group_id())|>
     ungroup()|>
-    relocate(any_of(contains("Rsq")),.after=NumPredictors)|>
+    relocate(any_of(contains("Rsq")),.after= NumObservations)|>
     relocate(any_of(contains("AIC")),.after=Rsq_MixedIntSlope)|>
     relocate(any_of(contains("BIC")),.after=AIC_MixedIntSlope)|>
     relocate(any_of(contains("RMSE")),.after=BIC_MixedIntSlope) |>
-    relocate(any_of(contains("MixedEffects")),.after=NumPredictors) |>
+    relocate(any_of(contains("MixedEffects")),.after= NumObservations) |>
     relocate(any_of(contains("ModelN")),.after=Model)
 
   coef_df <- bind_rows(coefs) |>
@@ -237,7 +241,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     group_by(Model)|>
     mutate(ModelN = cur_group_id()) |>
     ungroup() |>
-    relocate(any_of(contains("Intercept")),.after=NumPredictors) |>
+    relocate(any_of(contains("Intercept")),.after= NumObs) |>
     relocate(any_of(contains(c("VIF","Rsq"))),.after=last_col())|>
     relocate(any_of(contains("ModelN")),.after=Model)
   if (!varorder) coef_df <- coef_df |> select(-contains("Rsq.var"))
