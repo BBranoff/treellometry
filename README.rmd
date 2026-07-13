@@ -414,7 +414,7 @@ We also calculate the Root Median Square Error (RMdSE). This metric helps evalua
 ##  this same process is repeated for the >5cm dbh dataset as well 
 ##  take the results and round the values for aesthetics 
 performance <- mods$results%>%
-  mutate(across(6:32,~round(.x,5)))#%>%
+  mutate(across(7:33,~round(.x,5)))#%>%
 ###  get the back transformation of the RMSE
 ###  to do this, need to back transform the predictions and recalculate the RMSE
 RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
@@ -455,11 +455,11 @@ performance_long <- performance %>%
   mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
          ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
   filter(Metric!="ICC2")%>%
-  distinct(across(1:7),.keep_all = TRUE)|>
+  distinct(across(1:8),.keep_all = TRUE)|>
   mutate(Metric=if_else(grepl("RMSE",Metric),gsub("RMSE","RMSE_log",Metric),Metric))
 ##  add in the linear RMSE values
 performance_long <- bind_rows(performance_long,
-                          performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,MixedEffects,Effects,ModelName) %>% distinct()%>%
+                          performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,NumObservations,MixedEffects,Effects,ModelName) %>% distinct()%>%
   left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format
@@ -540,7 +540,7 @@ performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEf
 ```
 ```{r save-tables,echo=FALSE,message=FALSE,warning=FALSE}
 performance5cm <- mods5cm$results%>%
-  mutate(across(6:32,~round(.x,5)))
+  mutate(across(7:33,~round(.x,5)))
 RMSE5cm_lin <- lapply(seq_along(mods5cm$mods), function(x) {
   Model=names(mods5cm$mods)[x]
   x <- mods5cm$mods[[x]]
@@ -582,11 +582,11 @@ performance5cm_long <- performance5cm %>%
   mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
          ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
   filter(Metric!="ICC2")%>%
-  distinct(across(1:7),.keep_all = TRUE)|>
+  distinct(across(1:8),.keep_all = TRUE)|>
   mutate(Metric=if_else(grepl("RMSE",Metric),gsub("RMSE","RMSE_log",Metric),Metric))
 ##  add in the linear RMSE values
 performance5cm_long <- bind_rows(performance5cm_long,
-                          performance5cm_long %>% select(VarGroup,Model,ModelN,NumPredictors,MixedEffects,Effects,ModelName) %>% distinct()%>%
+                          performance5cm_long %>% select(VarGroup,Model,ModelN,NumPredictors,NumObservations,MixedEffects,Effects,ModelName) %>% distinct()%>%
   left_join(RMSE5cm_lin %>% select(-meanAGB) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format

@@ -213,7 +213,6 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
       }
     }
   }
-  browser()
   #modnamesF <- paste0("mod",(ncol(data_clean)+1):ncol(predsF)-ncol(data_clean),"_")
   #modnamesMM <- paste0("mod",rep((ncol(data_clean)+1):ncol(predsF)-ncol(data_clean),each=6),"_",mmmods)
   names(predsF)[grep("pred.",names(predsF))] <- paste0("preds_",grep("Fixed",names(mods),value=TRUE))
@@ -241,7 +240,7 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     group_by(Model)|>
     mutate(ModelN = cur_group_id()) |>
     ungroup() |>
-    relocate(any_of(contains("Intercept")),.after= NumObs) |>
+    relocate(any_of(contains("Intercept")),.after= NumPredictors) |>
     relocate(any_of(contains(c("VIF","Rsq"))),.after=last_col())|>
     relocate(any_of(contains("ModelN")),.after=Model)
   if (!varorder) coef_df <- coef_df |> select(-contains("Rsq.var"))
