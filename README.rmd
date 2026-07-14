@@ -646,7 +646,7 @@ coefs5cm_ranked <- coef5cm_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance5cm_ranked$ModelN,performance5cm_ranked$MixedEffects,performance5cm_ranked$Effects)) %>%  relocate(ModelN)
 coefs5cm_ranked <- coefs5cm_ranked[match(paste0(performance5cm_ranked$ModelN,performance5cm_ranked$MixedEffects,performance5cm_ranked$Effects),
                                        paste0(coefs5cm_ranked$ModelN,coefs5cm_ranked$MixedEffects,coefs5cm_ranked$Effects)), ]
-performance5cm_coeffs_combined <- performance5cm_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
+performance5cm_coeffs_combined <- performance5cm_ranked %>%select(ModelN,Model,NumObservations,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
   left_join(coef5cm_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 
 
@@ -661,7 +661,7 @@ write.csv(rbind(performance_ranked|>mutate(size="all"),
                 performance5cm_ranked|>mutate(size="5cm"))|>relocate(size),"Tables/PriceBranoff_Performance_ranked.csv",row.names=F)
 write.csv(rbind(coefs_ranked|>mutate(size="all"),
                 coefs5cm_ranked|>mutate(size="5cm"))|>relocate(size),"Tables/PriceBranoff_coefs_ranked.csv",row.names=F)
-```
+ ```
 The above created tables are stored in 'Tables' folder of this repository.
 
 We now have a dataset (performance_ranked) with the top performing model from each family of predictor variables, ranked by their performance metrics. Remember, however, that these rankings are somewhat arbitrary and based primarily upon our ability to logistically sort a large number of models. Different rankings could be applied for different objectives (prioritize RMSE, for example). Still, this gives us a general idea of which models are performing 'better' than others. We are left with around 100 models, which is still a considerable number. 
