@@ -196,8 +196,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             RMSE.CVmean_Fixed = RMSE_CVmean_fixed,
             RMSE.CVsd_Fixed = RMSE_CVsd_fixed,
           ) |> mutate(MixedEffects=ME) |>
-            bind_cols(tibble::as_tibble_row(setNames(as.list(c(nObs_Mixed,sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
-                                             paste0(rep(c("NumObservations_Mixed","Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
+            bind_cols(tibble::as_tibble_row(setNames(as.list(c(sings_mixed,R2_mixed,sigs_mixed,AIC_mixed,BIC_mixed,RMSE_mixed,RMSE_CVmean_mixed,RMSE_CVsd_mixed,ICC,ICC2)),
+                                             paste0(rep(c("Singular_Mixed","Rsq_Mixed","Sig_Mixed","AIC_Mixed","BIC_Mixed","RMSE_Mixed","RMSE.CVmean_Mixed","RMSE.CVsd_Mixed","ICC_Mixed","ICC2_Mixed"),each=2),
                                                     c("Int","IntSlope")))))
             coef_row <- tibble(
             VarGroup = varGroup,

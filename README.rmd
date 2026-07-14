@@ -450,7 +450,6 @@ RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
 RMSE_lin <- do.call(rbind,RMSE_lin)
 ##  pivot the table and categorize metrics and models
 performance_long <- performance %>%
-  #tidyr::left_join(RMSE_lin %>% select())
   tidyr::pivot_longer(Rsq_Fixed:ICC2_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) %>%
   mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
          ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
@@ -463,7 +462,8 @@ performance_long <- bind_rows(performance_long,
   left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format
-performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>tidyr::fill(everything(),.direction = "down")|>filter(!is.na(MixedEffects))|>
+performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>
+  tidyr::fill(everything(),.direction = "down")|>filter(!is.na(MixedEffects))|>
   relocate(RMdSE_lin_Fixed,RelRMdSE_lin_Fixed,RMSE_lin_Fixed,RelRMSE_lin_Fixed,.before=RMSE_log_Fixed)|>
   relocate(RMdSE_lin_MixedInt,RelRMdSE_lin_MixedInt,RMSE_lin_MixedInt,RelRMSE_lin_MixedInt,.before=RMSE_log_MixedInt)|>
   relocate(RMdSE_lin_MixedIntSlope,RelRMdSE_lin_MixedIntSlope,RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
@@ -535,7 +535,7 @@ coefs_filtered <- coef_wide %>%
   filter(paste0(ModelN,MixedEffects,Effects) %in% paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects)) %>%  relocate(ModelN)
 coefs_ranked <- coefs_filtered[match(paste0(performance_ranked$ModelN,performance_ranked$MixedEffects,performance_ranked$Effects),
                                        paste0(coefs_filtered$ModelN,coefs_filtered$MixedEffects,coefs_filtered$Effects)), ]
-performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
+performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,NumObservations,MixedEffects,Effects,masterrank_global,value_Rsq:value_RMSE_log,value_RMSE_lin,value_RelRMSE_lin,value_RMdSE_lin,value_RelRMdSE_lin,value_RMSE_log.CVmean:value_ICC) %>%
   left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 ```
 ```{r save-tables,echo=FALSE,message=FALSE,warning=FALSE}
