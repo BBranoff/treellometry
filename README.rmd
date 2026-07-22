@@ -622,9 +622,9 @@ performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed")
   ## remove singular ranking
   select(-contains("rank_Singular"))%>%
   rowwise()%>%
-  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,globalrank_RMSE_log.CVsd)),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
   mutate(masterrank_global=rank(globalranks_mean,na.last="keep")) %>%
