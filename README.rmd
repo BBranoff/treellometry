@@ -511,10 +511,10 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ungroup() |>
   ###  now create a master global rank based on the means
   ###  next we will create a master master, and so on...
-  mutate(masterrank_global=rank(globalranks_mean))  |>
+  mutate(masterrank_global=rank(globalranks_mean,na.last="keep"))  |>
   group_by(VarGroup) |>
   ##  same for the family ranks
-  mutate(masterrank_family=rank(familyranks_mean)) |>
+  mutate(masterrank_family=rank(familyranks_mean,na.last="keep")) |>
   ungroup() |>
   relocate(masterrank_global,masterrank_family,.after=Effects) |>
   arrange(masterrank_global)
@@ -627,9 +627,9 @@ performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed")
          familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,globalrank_RMSE_log.CVsd)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
   ungroup()%>%
-  mutate(masterrank_global=rank(globalranks_mean)) %>%
+  mutate(masterrank_global=rank(globalranks_mean,na.last="keep")) %>%
   group_by(VarGroup)%>%
-  mutate(masterrank_family=rank(familyranks_mean))%>%
+  mutate(masterrank_family=rank(familyranks_mean,na.last="keep"))%>%
   ungroup()%>%
   relocate(masterrank_global,masterrank_family,.after=Effects)%>%
   arrange(masterrank_global)
