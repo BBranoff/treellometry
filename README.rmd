@@ -31,10 +31,14 @@ library(sf)
 library(patchwork)
 devtools::load_all()
 options(width = 1000)
-#saveRDS(list(mods=mods,mods_scaled=mods_scaled,mods5cm=mods5cm,mods5cm_scaled=mods5cm_scaled),"E:\\OneDrive - USDA\\Chuck ME models\\R Package\\mods.rds")
+#saveRDS(list(mods=mods,mods_scaled=mods_scaled,mods5cm=mods5cm,mods5cm_scaled=mods5cm_scaled,
+#             mods_sameN =mods_reducedN, mods_sameN5cm =mods5cm_reducedN),"E:\\OneDrive - USDA\\Chuck ME models\\R Package\\mods.rds")
 mods <- readRDS("E:/OneDrive - USDA/Chuck ME models/R Package/mods.rds")
 mods5cm <- mods$mods5cm
+mods_reducedN <- mods$mods_sameN
+mods5cm_reducedN <- mods$mods_sameN5cm
 mods <- mods$mods
+
 
 data("mangroves")
 ###  set the variables of interest
@@ -94,8 +98,10 @@ responsevar <- paste0("log",responsevar)
 predictorvars <- paste0("log",predictorvars)
 
 mods <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars)
+mods_reducedN <- explore_allom_models(mangroves,responsevar,predictorvars,groupvars,SameN=TRUE)
 ###  5cm or greater
 mods5cm <- explore_allom_models(mangroves|>filter(DBH.cm>=5),responsevar,predictorvars,groupvars)
+mods5cm_reducedN <- explore_allom_models(mangroves|>filter(DBH.cm>=5),responsevar,predictorvars,groupvars,SameN=TRUE)
 ```
 
 As the models run, we can first examine the above discussed variance. Below is a general visual of the variable distributions. These 'kernel density estimates' or distributions are a representation of the probability density of any given value within the data. Tall and skinny distributions have relatively little variance compared to short and flat distributions. These visualizations help understand how the data are distributed among the groups and how the individual groups fit into the overall 'population', which is an underlying basis for testing in mixed effects models.  
@@ -411,15 +417,16 @@ where $\hat{y}$ is the log scaled prediction from the model and $\sigma^2$ is th
 We also calculate the Root Median Square Error (RMdSE). This metric helps evaluate the per-tree error rather than the per-dataset error that is more represented by the RMSE. Because large trees are exceptionally rare, and because an ordinary least squares regression (such as the ones we are performing) will be best representative of the median tree sizes, error terms for the outliers will typically be much larger and these errors will strongly skew the RMSE towards the greater values. While the RMSE is still a good metric to compare models for full-dataset error, the RMdSE is better suited to reflect how much error is 'typical' for each tree. 
 
 ```{r results,message=FALSE,warning=FALSE}
+##  for model comparison, we only use the models that were all fit to the same data
 ##  this same process is repeated for the >5cm dbh dataset as well 
 ##  take the results and round the values for aesthetics 
-performance <- mods$results%>%
-  mutate(across(7:33,~round(.x,5)))#%>%
+performance <- mods_reducedN$results |>
+  mutate(across(7:33,~round(.x,5)))
 ###  get the back transformation of the RMSE
 ###  to do this, need to back transform the predictions and recalculate the RMSE
-RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
-  Model=names(mods$mods)[x]
-  x <- mods$mods[[x]]
+RMSE_lin <- lapply(seq_along(mods_reducedN$mods), function(x) {
+  Model=names(mods_reducedN$mods)[x]
+  x <- mods_reducedN$mods[[x]]
   # 1. Safe class checking and R2 extraction
   if (!inherits(x, "lmerMod")) { 
     sigma_val <- summary(x)$sigma
@@ -449,17 +456,17 @@ RMSE_lin <- lapply(seq_along(mods$mods), function(x) {
 })
 RMSE_lin <- do.call(rbind,RMSE_lin)
 ##  pivot the table and categorize metrics and models
-performance_long <- performance %>%
-  tidyr::pivot_longer(Rsq_Fixed:ICC2_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) %>%
+performance_long <- performance |>
+  tidyr::pivot_longer(Rsq_Fixed:ICC2_MixedIntSlope,names_sep = "_",names_to =c("Metric","Effects")) |>
   mutate(MixedEffects=if_else(Effects=="Fixed",NA,MixedEffects),
-         ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) %>%
-  filter(Metric!="ICC2")%>%
+         ModelName = if_else(is.na(MixedEffects),paste0(ModelN,".",Effects),paste0(ModelN,".",Effects,"_",MixedEffects))) |>
+  filter(Metric!="ICC2") |>
   distinct(across(1:8),.keep_all = TRUE)|>
   mutate(Metric=if_else(grepl("RMSE",Metric),gsub("RMSE","RMSE_log",Metric),Metric))
 ##  add in the linear RMSE values
 performance_long <- bind_rows(performance_long,
-                          performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,NumObservations,MixedEffects,Effects,ModelName) %>% distinct()%>%
-  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric")%>% filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
+                          performance_long %>% select(VarGroup,Model,ModelN,NumPredictors,NumObservations,MixedEffects,Effects,ModelName) %>% distinct()|>
+  left_join(RMSE_lin %>% select(-c(meanAGB)) %>%tidyr::pivot_longer(cols=-Model,names_to="Metric") |> filter(Metric %in% c("RMdSE_lin","RelRMdSE_lin","RMSE_lin","RelRMSE_lin")),by=join_by(ModelName==Model)))
 
 ##  return back to wide format
 performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(names_from=c("Metric",Effects))|>group_by(ModelN)|>
@@ -474,43 +481,46 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
                         ##  we separate the fixed effects models from the mixed effects models because the fixed effects
                         ##  information is repeated in the rows pertaining to the same model family.
                         ##  So, we can then remove the duplicated fixed effects information for brevity. 
-                        performance_ranked %>% filter(Effects=="Fixed")%>%
-                          distinct(Model,Metric,.keep_all = TRUE)%>%
-                          mutate(MixedEffects=NA))%>%
+                        performance_ranked %>% filter(Effects=="Fixed")|>
+                          distinct(Model,Metric,.keep_all = TRUE)|>
+                          mutate(MixedEffects=NA)) |>
   ###  for each metric, rank the values from each model.
-  group_by(Metric)%>%
+  group_by(Metric) |>
   ###  first across all models 
   ###  If R-squared or ICC, we want the highest value but all other values are optimized at the minimum
-  mutate(globalrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
-  ungroup()%>%
-  group_by(Metric,VarGroup)%>%
+  mutate(globalrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value))) |>
+  mutate(globalrank=if_else(Metric =="ICC"&(is.na(value)|value<0.1),NA,globalrank)) |>
+  ungroup() |>
+  group_by(Metric,VarGroup) |>
   ###  then the same within model "families"
-  mutate(familyrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
-  ungroup()%>%
+  mutate(familyrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value))) |>
+  mutate(familyrank=if_else(Metric =="ICC"&(is.na(value)|value<0.1),NA,familyrank)) |>
+  ungroup() |>
   ##  now pivot back to wider with the rankings
-  tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank")) %>%
+  tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank"))  |>
   ## remove singular ranking
-  select(-contains("rank_Singular"))%>%
-  rowwise()%>%
+  select(-contains("rank_Singular")) |>
+  rowwise() |>
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
   ##  These suggest random effects are either minimal (zero) or there is not enough information to compute
   mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
          familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
-         familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean))%>%
-  ungroup()%>%
+         familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean)) |>
+  ungroup() |>
   ###  now create a master global rank based on the means
   ###  next we will create a master master, and so on...
-  mutate(masterrank_global=rank(globalranks_mean)) %>%
-  group_by(VarGroup)%>%
+  mutate(masterrank_global=rank(globalranks_mean))  |>
+  group_by(VarGroup) |>
   ##  same for the family ranks
-  mutate(masterrank_family=rank(familyranks_mean))%>%
-  ungroup()%>%
-  relocate(masterrank_global,masterrank_family,.after=Effects)%>%
+  mutate(masterrank_family=rank(familyranks_mean)) |>
+  ungroup() |>
+  relocate(masterrank_global,masterrank_family,.after=Effects) |>
   arrange(masterrank_global)
 
 ##  attach the VIF values from the coefficients table
+##  this time, coefficients come from the full dataset models
 coef <- mods$coefs |>
   mutate(across(6:32,~round(.x,5)))|>
   rowwise()|>
@@ -539,11 +549,11 @@ performance_coeffs_combined <- performance_ranked %>%select(ModelN,Model,NumObse
   left_join(coef_wide%>%select(-c(VarGroup,Model,NumPredictors)),by=join_by(ModelN==ModelN,MixedEffects==MixedEffects,Effects==Effects))
 ```
 ```{r save-tables,echo=FALSE,message=FALSE,warning=FALSE}
-performance5cm <- mods5cm$results%>%
+performance5cm <- mods5cm_reducedN$results%>%
   mutate(across(7:33,~round(.x,5)))
-RMSE5cm_lin <- lapply(seq_along(mods5cm$mods), function(x) {
-  Model=names(mods5cm$mods)[x]
-  x <- mods5cm$mods[[x]]
+RMSE5cm_lin <- lapply(seq_along(mods5cm_reducedN$mods), function(x) {
+  Model=names(mods5cm_reducedN$mods)[x]
+  x <- mods5cm_reducedN$mods[[x]]
   # 1. Safe class checking and R2 extraction
   if (!inherits(x, "lmerMod")) { 
     sigma_val <- summary(x)$sigma
@@ -602,9 +612,11 @@ performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed")
                           mutate(MixedEffects=NA))%>%
   group_by(Metric)%>%
   mutate(globalrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
+  mutate(globalrank=if_else(Metric =="ICC"&(is.na(value)|value<0.1),NA,globalrank)) |>
   ungroup()%>%
   group_by(Metric,VarGroup)%>%
   mutate(familyrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
+  mutate(familyrank=if_else(Metric =="ICC"&(is.na(value)|value<0.1),NA,familyrank)) |>
   ungroup()%>%
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank")) %>%
   ## remove singular ranking
@@ -661,7 +673,7 @@ write.csv(rbind(performance_ranked|>mutate(size="all"),
                 performance5cm_ranked|>mutate(size="5cm"))|>relocate(size),"Tables/PriceBranoff_Performance_ranked.csv",row.names=F)
 write.csv(rbind(coefs_ranked|>mutate(size="all"),
                 coefs5cm_ranked|>mutate(size="5cm"))|>relocate(size),"Tables/PriceBranoff_coefs_ranked.csv",row.names=F)
- ```
+```
 The above created tables are stored in 'Tables' folder of this repository.
 
 We now have a dataset (performance_ranked) with the top performing model from each family of predictor variables, ranked by their performance metrics. Remember, however, that these rankings are somewhat arbitrary and based primarily upon our ability to logistically sort a large number of models. Different rankings could be applied for different objectives (prioritize RMSE, for example). Still, this gives us a general idea of which models are performing 'better' than others. We are left with around 100 models, which is still a considerable number. 
@@ -678,8 +690,8 @@ checks <- lapply(unique(performance_ranked$ModelName),function(x){
 
 ```{r, echo=FALSE, out.width="100%",warning=FALSE,message=FALSE,fig.cap="An example of the assumptions plots for model '20.MixedInt_Species&Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository."}
 tfile <- tempfile(fileext = ".png")
-png <- pdftools::pdf_convert("Assumptions/20.MixedInt_Species&Site-model_checks.pdf",format="png",filenames=tfile,verbose=FALSE)
-knitr::include_graphics(tfile )
+suppressWarnings(png <- pdftools::pdf_convert("Assumptions/20.MixedInt_Species&Site-model_checks.pdf",format="png",filenames=tfile,verbose=FALSE))
+knitr::include_graphics(tfile)
 ```
 
 We can also now begin to examine some of the results more closely. One way to scrutinize the performance of multiple models is through the compare_perfomance function from the performance package. This function will evaluate multiple performance metrics, in our case sigma, RMSE, R2, AIC and BIC, across all of the models and produce spider plots with relative values for all. The spider plots indicate the 'best' model as the one with the largest area, allowing for easier visual comparisons. 
@@ -689,7 +701,7 @@ We can also now begin to examine some of the results more closely. One way to sc
 # ####  select the top filtered models
  modskeep_df <- performance_ranked %>%
    select(ModelN)
- modskeep <- mods$mods[grep(paste0(modskeep_df%>%pull(ModelN),".",collapse="|"),names(mods$mods))]
+ modskeep <- mods_reducedN$mods[grep(paste0(modskeep_df%>%pull(ModelN),".",collapse="|"),names(mods_reducedN$mods))]
  ###  use an lapply function to iterate over the models and compute the performance comparisons in groups
  perfs <- lapply(modskeep_df%>%pull(ModelN)|>unique(),
                  ##  the performance comparison
@@ -699,7 +711,7 @@ We can also now begin to examine some of the results more closely. One way to sc
                    cat(paste0("\r",round(100*which(x==unique(modskeep_df$ModelN))/length(unique(modskeep_df$ModelN)))))
                    perf
                  }
-                 ,mds=mods$mods)
+                 ,mds=mods_reducedN$mods)
  ###  these can be used individually to assess models within families
 # plot(perfs[[1]])
 ```

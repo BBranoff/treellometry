@@ -3,7 +3,7 @@
 #' @importFrom tibble as_tibble_row tibble
 #' @importFrom r2glmm r2beta
 #' @importFrom dplyr mutate filter across left_join select n bind_cols join_by bind_rows cur_group_id last_col relocate group_by ungroup
-explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=FALSE,varorder=FALSE) {
+explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle=FALSE,varorder=FALSE,SameN=FALSE) {
   if (responseVar %in% predictorVars) stop("Response variable found in predictor variables")
   # Log-transform response and predictors
   #dat[[paste0("log", responseVar)]] <- log(dat[[responseVar]])
@@ -14,7 +14,9 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     dat <- dat |>
       mutate( across(contains(predictorVars),function(x) scale(x)[,1]))#,.names = "{paste0(col, '_scaled')}"))
   }
+  if (SameN)  dat <- dat |> filter(if_all(c(predictorVars,responseVar), ~ !is.na(.)))
   dat <- dat |> mutate( ID=1:n())
+
   predsMM <- predsF <- dat
   results <- list()
   coefs <- list()
