@@ -504,9 +504,9 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
   ##  These suggest random effects are either minimal (zero) or there is not enough information to compute
-  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig,globalrank_RMSE_log.CVsd)),
+  mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig)),
          globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig,familyrank_RMSE_log.CVsd)),
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig)),
          familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean)) |>
   ungroup() |>
   ###  now create a master global rank based on the means
