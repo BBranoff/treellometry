@@ -283,7 +283,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 202235
+    ## R RNG seed set to 526185
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -577,7 +577,7 @@ performance_wide <- performance_long |> select(-ModelName)|>tidyr::pivot_wider(n
   relocate(RMdSE_lin_MixedIntSlope,RelRMdSE_lin_MixedIntSlope,RMSE_lin_MixedIntSlope,RelRMSE_lin_MixedIntSlope,.before=RMSE_log_MixedIntSlope)
 
 ##  rank the models based on their metrics
-performance_ranked <- performance_long
+performance_ranked <- performance_long 
 performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
                         ##  we separate the fixed effects models from the mixed effects models because the fixed effects
                         ##  information is repeated in the rows pertaining to the same model family.
@@ -599,6 +599,8 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ungroup() |>
   ##  now pivot back to wider with the rankings
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank"))  |>
+  ##  remove invalid ICC models
+  filter(Effects=="Fixed"|(!is.na(value_ICC)&value_ICC>.1))|>
   ## remove singular ranking
   select(-contains("rank_Singular")) |>
   rowwise() |>
@@ -606,9 +608,7 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
   ##  These suggest random effects are either minimal (zero) or there is not enough information to compute
   mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig)),
-         globalranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, globalranks_mean),
-         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig)),
-         familyranks_mean=if_else((is.na(value_ICC)|value_ICC<.1)&Effects!="Fixed",NA, familyranks_mean)) |>
+         familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig))) |>
   ungroup() |>
   ###  now create a master global rank based on the means
   ###  next we will create a master master, and so on...
@@ -686,7 +686,7 @@ checks <- lapply(unique(performance_ranked$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpC68iGl\filea4f878cc3b9e.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpsJI2lt\file6a747d402529.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 
 An example of the assumptions plots for model
