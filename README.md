@@ -283,7 +283,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 707709
+    ## R RNG seed set to 576531
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -686,7 +686,7 @@ checks <- lapply(unique(performance_ranked$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpkbBgeE\filee9c43c4d3321.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpMdgzEY\file1189060b93a74.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 
 An example of the assumptions plots for model
@@ -761,6 +761,7 @@ perfs2 <- lapply(modskeep_df |>
                    filter(!(Effects=="Fixed"&MixedEffects %in% c("Species","Site")))%>%rename(Sigma=Sig))
 
 perfs2 <- do.call(rbind,perfs2) |>
+   filter(Effects=="Fixed"|(!is.na(ICC)&ICC>.1))|>
   mutate(Model.x=if_else(grepl("Mixed",Effects),"lmerMod","lm"),
          Model.y=gsub("log|.cm|.m|.g.cm3","",Model)) |>
   # separate the random effects and the random variables

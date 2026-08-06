@@ -732,6 +732,7 @@ perfs2 <- lapply(modskeep_df |>
                    filter(!(Effects=="Fixed"&MixedEffects %in% c("Species","Site")))%>%rename(Sigma=Sig))
 
 perfs2 <- do.call(rbind,perfs2) |>
+   filter(Effects=="Fixed"|(!is.na(ICC)&ICC>.1))|>
   mutate(Model.x=if_else(grepl("Mixed",Effects),"lmerMod","lm"),
          Model.y=gsub("log|.cm|.m|.g.cm3","",Model)) |>
   # separate the random effects and the random variables
