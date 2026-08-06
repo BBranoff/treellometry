@@ -283,7 +283,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 576531
+    ## R RNG seed set to 910164
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -686,7 +686,7 @@ checks <- lapply(unique(performance_ranked$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpMdgzEY\file1189060b93a74.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpO4Pkd0\filea8bc3eb22f1e.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 
 An example of the assumptions plots for model
@@ -763,7 +763,11 @@ perfs2 <- lapply(modskeep_df |>
 perfs2 <- do.call(rbind,perfs2) |>
    filter(Effects=="Fixed"|(!is.na(ICC)&ICC>.1))|>
   mutate(Model.x=if_else(grepl("Mixed",Effects),"lmerMod","lm"),
-         Model.y=gsub("log|.cm|.m|.g.cm3","",Model)) |>
+         Model.y=gsub("log|.cm|.m|.g.cm3","",Model),
+         Model.y=gsub("CanopyDieter","Canopy",Model.y),
+         Model.y=gsub("WoodDensity","Density",Model.y),
+         Model.y=gsub("Cp.DBH.H.Den","DBHxHeightxDensity",Model.y),
+         Model.y=gsub("Cp.Can.H.Den","CanopyxHeightxDensity",Model.y)) |>
   # separate the random effects and the random variables
   # these will help in visualizing among multiple families by using the same colors for each group
   tidyr::separate(Name,sep="(?=int|Int)",remove=FALSE, into=c("RandomVars","RandomEffects")) |>
@@ -777,8 +781,8 @@ perfs2 <- do.call(rbind,perfs2) |>
          Model.y = paste0(Model.y,"\n RMSE: ",round(min(RMSE_lin,na.rm=TRUE)))) |>
   ungroup() |>
   arrange(RMSE_lin) |>
-  mutate(Model.y=factor(Model.y,levels=unique(Model.y))) %>%
-  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMdSE_lin","RMSE_lin","RMSE_log.CVsd"))|>
+  #mutate(Model.y=factor(Model.y,levels=unique(Model.y))) %>%
+  tidyr::pivot_longer(cols=c("Rsq","Sigma","AIC","BIC","RMdSE_lin","RMSE_lin"))|>
   group_by(name) |>
   ###  re-scale the metrics so that the spiderwebs are comparable across families
   mutate(value2=if_else(name %in% c("Rsq"),scales::rescale(value,to=c(0.1,1)),scales::rescale(-value,to=c(0.1,1))),
@@ -786,13 +790,13 @@ perfs2 <- do.call(rbind,perfs2) |>
          group=if_else(group=="none none","Fixed",group)) |>
   ungroup() %>%
   mutate(name=if_else(name=="RMdSE_lin","RMdSE_\nlin",if_else(name=="RMSE_log.CVsd","RMSE_\nCVsd",if_else(name=="RMSE_lin","RMSE_\nlin",name))),
-         name=factor(name,levels=c("AIC","BIC","RMdSE_\nlin","RMSE_\nlin","RMSE_\nCVsd","Rsq","Sigma")))
+         name=factor(name,levels=c("AIC","BIC","RMdSE_\nlin","RMSE_\nlin","Rsq","Sigma")))
   
 ###  plot the performance plots
 plot_index=0
 perfs2 %>%
   ggplot(aes(x=name,y=value2,color=group,group=group))+
-  facet_wrap(~Model.y,scales="free",ncol =4,labeller=label_wrap_gen(width = 20))+
+  facet_wrap(~factor(Model.y,levels=unique(Model.y)),scales="free",ncol =4,labeller=label_wrap_gen(width = 20))+
   geom_polygon(linewidth=1,alpha=0)+
   scale_x_discrete(
     labels = function(x) {
