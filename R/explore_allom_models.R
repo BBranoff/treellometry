@@ -205,7 +205,8 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
             VarGroup = varGroup,
             MixedEffects=ME,
             Model = paste(preds, collapse = ", "),
-            NumPredictors = length(preds)) |>
+            NumPredictors = length(preds),
+            NumObservations = nobs(fixed_model)) |>
             bind_cols(fixed_cols)|>
             bind_cols(tibble::as_tibble_row(setNames(as.list(coefs_mixed),
                                              paste0(nmsm, "_Mixed",rep(c("Int","IntSlope"),each=length(nmsm))))))
@@ -236,13 +237,12 @@ explore_allom_models <- function(dat, responseVar, predictorVars, groupVars,scle
     relocate(any_of(contains("RMSE")),.after=BIC_MixedIntSlope) |>
     relocate(any_of(contains("MixedEffects")),.after= NumObservations) |>
     relocate(any_of(contains("ModelN")),.after=Model)
-
   coef_df <- bind_rows(coefs) |>
     mutate(Model=factor(Model,levels=unique(Model))) |>
     group_by(Model)|>
     mutate(ModelN = cur_group_id()) |>
     ungroup() |>
-    relocate(any_of(contains("Intercept")),.after= NumPredictors) |>
+    relocate(any_of(contains("Intercept")),.after= NumObservations) |>
     relocate(any_of(contains(c("VIF","Rsq"))),.after=last_col())|>
     relocate(any_of(contains("ModelN")),.after=Model)
   if (!varorder) coef_df <- coef_df |> select(-contains("Rsq.var"))
