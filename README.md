@@ -283,7 +283,7 @@ metrics of the fixed effects models are demonstrated further below, as
 they will be included with those from mixed effects models from the same
 set of predictor variables.
 
-    ## R RNG seed set to 910164
+    ## R RNG seed set to 767883
 
     ## # A tibble: 1 × 5
     ##   `(Intercept)_Fixed` slope.var1_Fixed slope.var2_Fixed VIF.var1_Fixed VIF.var2_Fixed
@@ -585,6 +585,11 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
                         performance_ranked %>% filter(Effects=="Fixed")|>
                           distinct(Model,Metric,.keep_all = TRUE)|>
                           mutate(MixedEffects=NA)) |>
+  ##  remove invalid ICC models
+  group_by(ModelName)|>
+  filter(!any(Metric=="ICC"&(is.na(value)|value<=.1)))|>
+  filter(!any(Metric=="Singular"&value==1))|>
+  ungroup()|>
   ###  for each metric, rank the values from each model.
   group_by(Metric) |>
   ###  first across all models 
@@ -599,10 +604,7 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ungroup() |>
   ##  now pivot back to wider with the rankings
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank"))  |>
-  ##  remove invalid ICC models
-  filter(Effects=="Fixed"|(!is.na(value_ICC)&value_ICC>.1))|>
-  ## remove singular ranking
-  select(-contains("rank_Singular")) |>
+  select(-globalrank_Singular)|>
   rowwise() |>
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
@@ -686,7 +688,7 @@ checks <- lapply(unique(performance_ranked$ModelName),function(x){
 
 <div class="figure">
 
-<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpO4Pkd0\filea8bc3eb22f1e.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
+<img src="C:\Users\BENJAM~1\AppData\Local\Temp\RtmpkVYZWM\file7b5c64af63b2.png" alt="An example of the assumptions plots for model '20.MixedInt_Species&amp;Site'. Each panel is a visual representation of the model assumptions. Many of the top-performing models seem to be satisfactory in meeting these assumptions, but some are not. All top model assumption plots are stored in the 'Assumptions' folder of the repository." width="100%" />
 <p class="caption">
 
 An example of the assumptions plots for model

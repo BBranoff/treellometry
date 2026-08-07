@@ -484,6 +484,11 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
                         performance_ranked %>% filter(Effects=="Fixed")|>
                           distinct(Model,Metric,.keep_all = TRUE)|>
                           mutate(MixedEffects=NA)) |>
+  ##  remove invalid ICC models
+  group_by(ModelName)|>
+  filter(!any(Metric=="ICC"&(is.na(value)|value<=.1)))|>
+  filter(!any(Metric=="Singular"&value==1))|>
+  ungroup()|>
   ###  for each metric, rank the values from each model.
   group_by(Metric) |>
   ###  first across all models 
@@ -498,10 +503,7 @@ performance_ranked <- rbind(performance_ranked%>% filter(Effects!="Fixed"),
   ungroup() |>
   ##  now pivot back to wider with the rankings
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank"))  |>
-  ##  remove invalid ICC models
-  filter(Effects=="Fixed"|(!is.na(value_ICC)&value_ICC>.1))|>
-  ## remove singular ranking
-  select(-contains("rank_Singular")) |>
+  select(-globalrank_Singular)|>
   rowwise() |>
   ##  compute the mean of the ranks for each model family, this we call the 'mean rank'
   ##  here, we dont rank models with an ICC less than 0.1 or a missing ICC value
@@ -610,6 +612,11 @@ performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed")
                         performance5cm_ranked %>% filter(Effects=="Fixed")%>%
                           distinct(Model,Metric,.keep_all = TRUE)%>%
                           mutate(MixedEffects=NA))%>%
+   ##  remove invalid ICC models
+  group_by(ModelName)|>
+  filter(!any(Metric=="ICC"&(is.na(value)|value<=.1)))|>
+  filter(!any(Metric=="Singular"&value==1))|>
+  ungroup()|>
   group_by(Metric)%>%
   mutate(globalrank=if_else(Metric %in% c("Rsq","ICC"),rank(-value),rank(value)))%>%
   mutate(globalrank=if_else(Metric =="ICC"&(is.na(value)|value<0.1),NA,globalrank)) |>
@@ -619,10 +626,7 @@ performance5cm_ranked <- rbind(performance5cm_ranked%>% filter(Effects!="Fixed")
   mutate(familyrank=if_else(Metric =="ICC"&(is.na(value)|value<0.1),NA,familyrank)) |>
   ungroup()%>%
   tidyr::pivot_wider(names_from =c("Metric"),values_from = c("value","globalrank","familyrank")) %>%
-  ##  remove invalid ICC models
-  filter(Effects=="Fixed"|(!is.na(value_ICC)&value_ICC>.1))|>
-  ## remove singular ranking
-  select(-contains("rank_Singular"))%>%
+  select(-globalrank_Singular)|>
   rowwise()%>%
   mutate(globalranks_mean=mean(c(globalrank_Rsq,globalrank_AIC,globalrank_BIC,globalrank_RMSE_lin,globalrank_RMdSE_lin,globalrank_Sig)),
          familyranks_mean=mean(c(familyrank_Rsq,familyrank_AIC,familyrank_BIC,familyrank_RMSE_lin,familyrank_RMdSE_lin,familyrank_Sig)))%>%
